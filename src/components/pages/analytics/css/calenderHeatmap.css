@@ -1,0 +1,37 @@
+/* CalendarHeatmap.css */
+
+/* Existing color classes */
+.color-empty {
+  fill: #ebedf0;
+}
+
+.color-scale-1 {
+  fill: #c6e48b;
+}
+
+.color-scale-2 {
+  fill: #7bc96f;
+}
+
+.color-scale-3 {
+  fill: #239a3b;
+}
+
+.color-scale-4 {
+  fill: #196127;
+}
+
+/* Hover effect */
+.react-calendar-heatmap .color-scale-1:hover,
+.react-calendar-heatmap .color-scale-2:hover,
+.react-calendar-heatmap .color-scale-3:hover,
+.react-calendar-heatmap .color-scale-4:hover {
+  stroke: #555;
+  stroke-width: 1px;
+}
+
+/* Reduce font size of weekday and month labels */
+.react-calendar-heatmap text {
+  font-size: 10px; /* Adjust this value as needed */
+  fill: #767676;   /* Adjust color if needed */
+}
