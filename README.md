@@ -1,4 +1,4 @@
-# haulway-landing
+# Rayvvin Vendor Portal
 
 ## Installation
 
