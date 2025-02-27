@@ -63,9 +63,9 @@ export const authProvider = supabaseAuthProvider(supabase, {
             data: [],
           };
 
-    if (!medusa_wallet_account || medusa_wallet_account_error) {
-      throw new Error();
-    }
+    // if (!medusa_wallet_account || medusa_wallet_account_error) {
+    //   throw new Error();
+    // }
 
     // console.log(data);
     // setUser(data);
