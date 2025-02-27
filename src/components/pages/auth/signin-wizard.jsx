@@ -695,7 +695,6 @@ const SignInWizardForm = ({ hndlSbmtRef, mode, setMode, cred, setCred }) => {
                 toast.error(e.message);
                 setLoading(false);
               });
-            // redirect("https://eke.afriomarkets.com/app");
           })
           .catch((e) => {
             console.log(e);

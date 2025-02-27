@@ -302,7 +302,7 @@ const PhoneNumberInput = ({ source, label }) => {
       <PhoneInput
         placeholder={label}
         {...field}
-        defaultCountry={"NG"}
+        defaultCountry={"UK"}
         className="MuiOutlinedInput-root MuiInputBase-colorPrimary"
       />
       {fieldState.error && <span>{fieldState.error.message}</span>}

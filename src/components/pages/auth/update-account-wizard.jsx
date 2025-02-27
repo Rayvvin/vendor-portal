@@ -308,7 +308,7 @@ const PhoneNumberInput = ({ source, label }) => {
       <PhoneInput
         placeholder={label}
         {...field}
-        defaultCountry={"NG"}
+        defaultCountry={"GB"}
         className="MuiOutlinedInput-root MuiInputBase-colorPrimary"
       />
       {fieldState.error && <span>{fieldState.error.message}</span>}
@@ -787,6 +787,8 @@ const FormWrapper = () => {
   const [miniMarkets, setMiniMarkets] = useState(null);
   const [countries, setCountries] = useState(CountryCurrencies);
   const [market_obj, setMarket_Obj] = useState(null);
+
+  
 
   React.useEffect(() => {
     if (

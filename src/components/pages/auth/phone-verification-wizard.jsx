@@ -609,9 +609,9 @@ const VerificationWizardForm = ({ hndlSbmtRef }) => {
     console.log("Verifying", identity?.data?.medusa_user?.metadata);
     toast.success("User Account Verification Complete");
     if (identity && identity?.data?.medusa_user?.metadata) {
-      redirect("/");
+      redirect("/product");
     } else {
-      redirect("/complete-registration");
+      redirect("/product");
     }
   };
 

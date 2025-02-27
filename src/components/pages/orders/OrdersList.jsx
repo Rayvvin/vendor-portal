@@ -102,7 +102,7 @@ const StatCard = (props) => {
 
 const postFilters = [
   <SearchInput
-    alwaysOn
+    // alwaysOn
     className="card"
     placeholder="Search Orders"
     source="display_id@like"
@@ -125,8 +125,8 @@ const postFilters = [
       },
     }}
   />,
-  <TextInput label="Description" source="description" defaultValue="" />,
-  <TextInput label="Handle" source="handle" defaultValue="" />,
+  <TextInput label="Description" source="description@like" defaultValue="" />,
+  <TextInput label="Handle" source="handle @like" defaultValue="" />,
 ];
 
 const ListActions = () => {
@@ -271,8 +271,7 @@ const ListActions = () => {
                 spacing={2}
                 style={{ marginBottom: "10px" }}
               >
-                {/* <FilterButton filters={postFilters} /> */}
-                <FilterForm filters={postFilters} />
+                <FilterButton filters={postFilters} />
                 <Button style={{ padding: "4px 20px" }}>
                   <IconEvent fontSize="small" style={{ marginRight: "2px" }} />
                 </Button>
@@ -284,8 +283,7 @@ const ListActions = () => {
                 spacing={2}
                 style={{ marginBottom: "10px" }}
               >
-                {/* <FilterButton variant="contained" filters={postFilters} /> */}
-                <FilterForm filters={postFilters} />
+                <FilterButton variant="contained" filters={postFilters} />
                 {/* <CreateButton variant="contained" label="Create" /> */}
                 {/* <Button
                           variant='contained'
@@ -301,8 +299,7 @@ const ListActions = () => {
                 spacing={2}
                 style={{ marginBottom: "10px" }}
               >
-                {/* <FilterButton filters={postFilters} /> */}
-                <FilterForm filters={postFilters} />
+                <FilterButton filters={postFilters} />
                 {/* <CreateButton
                   variant="contained"
                   sx={{ padding: "4px 40px", fontSize: "15px" }}
