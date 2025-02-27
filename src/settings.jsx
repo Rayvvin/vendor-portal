@@ -137,14 +137,14 @@ function Settings() {
       //     : null,
       route: '/personal-settings'
     },
-    {
-      title: "Manage shipping, payment, and fulfillment across regions",
-      value: "Regions",
-      percentage: "+15%",
-      icon: <LocationOn sx={{ color: "var(--emerald)" }} fontSize="large" />,
-      color: "var(--emerald)",
-      route: '/region'
-    },
+    // {
+    //   title: "Manage shipping, payment, and fulfillment across regions",
+    //   value: "Regions",
+    //   percentage: "+15%",
+    //   icon: <LocationOn sx={{ color: "var(--emerald)" }} fontSize="large" />,
+    //   color: "var(--emerald)",
+    //   route: '/region'
+    // },
     {
       title: "Manage the currencies of your store",
       value: "Currencies",
@@ -235,7 +235,7 @@ function Settings() {
       </Stack>
       <Stack
         direction={"row"}
-        justifyContent={"space-around"}
+        justifyContent={"start"}
         flexWrap={"wrap"}
         marginTop={"10px"}
       >

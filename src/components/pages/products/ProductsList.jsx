@@ -104,7 +104,7 @@ const postFilters = [
     alwaysOn
     className="card"
     placeholder="Search Products"
-    source="title"
+    source="title@like"
     defaultValue=""
     resettable
     sx={{

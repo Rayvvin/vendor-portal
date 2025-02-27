@@ -105,7 +105,7 @@ const postFilters = [
     alwaysOn
     className="card"
     placeholder="Search Orders"
-    source="display_id"
+    source="display_id@like"
     defaultValue=""
     resettable
     sx={{
@@ -271,7 +271,8 @@ const ListActions = () => {
                 spacing={2}
                 style={{ marginBottom: "10px" }}
               >
-                <FilterButton filters={postFilters} />
+                {/* <FilterButton filters={postFilters} /> */}
+                <FilterForm filters={postFilters} />
                 <Button style={{ padding: "4px 20px" }}>
                   <IconEvent fontSize="small" style={{ marginRight: "2px" }} />
                 </Button>
@@ -283,7 +284,8 @@ const ListActions = () => {
                 spacing={2}
                 style={{ marginBottom: "10px" }}
               >
-                <FilterButton variant="contained" filters={postFilters} />
+                {/* <FilterButton variant="contained" filters={postFilters} /> */}
+                <FilterForm filters={postFilters} />
                 {/* <CreateButton variant="contained" label="Create" /> */}
                 {/* <Button
                           variant='contained'
@@ -299,7 +301,8 @@ const ListActions = () => {
                 spacing={2}
                 style={{ marginBottom: "10px" }}
               >
-                <FilterButton filters={postFilters} />
+                {/* <FilterButton filters={postFilters} /> */}
+                <FilterForm filters={postFilters} />
                 {/* <CreateButton
                   variant="contained"
                   sx={{ padding: "4px 40px", fontSize: "15px" }}
