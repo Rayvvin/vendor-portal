@@ -92,7 +92,7 @@ const Header = () => (
         Account Update
       </p> */}
 
-      <img src={Logo} alt="Icon" width={250} />
+      <img src={Logo} alt="Icon" width={150} />
     </Box>
     <Box
       sx={{
@@ -406,143 +406,8 @@ const AccountUpdateWizardForm = ({
   });
 
   React.useEffect(() => {
-    hndlSbmtRef.current = handleSubmit;
-    async function ReadMarkets() {
-      let { data: market, error } = await supabase.from("market").select("*");
-      if (error) {
-        toast.error(
-          `Couldn't fetch State and Market data, Please Reload to restart the process`
-        );
-      }
-      if (!error && market) {
-        setMarkets(market);
-      }
-    }
-    async function ReadMiniMarkets() {
-      let { data: market, error } = await supabase
-        .from("un_reg_market")
-        .select("*");
-      if (!error && market) {
-        setMiniMarkets(market);
-      }
-    }
-    async function ReadUser() {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-
-      // console.log(nw_data);
-      if (error) {
-        if (error.message === "Email not confirmed") {
-          // toast.warning(error.message);
-          setUser({});
-        } else {
-          // toast.error(error.message);
-        }
-      }
-      if (!error && user) {
-        setUser(user);
-      }
-    }
-    ReadUser();
-    ReadMarkets();
-    ReadMiniMarkets();
-  }, []);
-
-  React.useEffect(() => {
-    console.log(user, identity);
-  }, [user, identity]);
-
-  React.useEffect(() => {
-    const getUniqueStates = (markets) => {
-      const states = markets.map((market) => {
-        return { id: market.state_id, name: market.state };
-      });
-
-      const uniqueStates = [...new Set(states.map((st) => st.id))].map(
-        (st_id) => {
-          return states.find((stt) => {
-            return stt.id === st_id;
-          });
-        }
-      );
-      return uniqueStates;
-    };
-
-    if (markets) {
-      // console.log(markets)
-      setStates(getUniqueStates(markets));
-    }
-  }, [markets]);
-
-  React.useEffect(() => {
-    if (states) {
-      console.log(
-        states &&
-          states.find((stt) => {
-            return stt.name === identity?.data?.medusa_user?.metadata?.province;
-          })
-      );
-    }
-  }, [states]);
-
-  React.useEffect(() => {
-    if (new_market_name) {
-      console.log(new_market_name);
-    }
-  }, [new_market_name]);
-
-  const createUnregisteredMarket = async (
-    country_id,
-    country,
-    state_id,
-    state,
-    un_reg_market,
-    nearby_market
-  ) => {
-    try {
-      // console.log("Here");
-      let { data: un_reg_market_obj, error: new_error } = await supabase
-        .from("un_reg_market")
-        .select("*")
-        .eq("un_reg_market", un_reg_market);
-      // .limit(1);
-
-      if (new_error) {
-        throw new_error;
-      }
-
-      if (un_reg_market_obj.length) {
-        // let mrkt = un_reg_market_obj[0];
-        return { un_reg_market_obj, error: null };
-      } else {
-        const { data, error } = await supabase
-          .from("un_reg_market")
-          .insert([
-            {
-              country_id,
-              country,
-              state_id,
-              state,
-              un_reg_market,
-              nearby_market,
-            },
-          ])
-          .select();
-
-        if (error) {
-          throw error;
-        }
-
-        return { data, error: null };
-      }
-    } catch (error) {
-      // console.error("Supabase insert error:", error.message);
-      notify("New Market Creation Error", { type: "error" });
-      return { data: null, error: error.message };
-    }
-  };
+      hndlSbmtRef.current = handleSubmit;
+    }, []);
 
   const Steps = [
     <>
@@ -800,128 +665,7 @@ const AccountUpdateWizardForm = ({
         </Stack>
       ),
     },
-    {
-      title: "Market Info",
-      body: (
-        <Stack spacing={0} sx={{ padding: "10px 15px" }}>
-          <Box sx={{ marginTop: "1em" }}>
-            <SelectInput
-              // autoFocus
-              source="market"
-              // type="text"
-              label={translate("Market")}
-              disabled={loading}
-              validate={required()}
-              fullWidth
-              variant="outlined"
-              choices={
-                province && markets
-                  ? markets
-                      .filter((mrkt) => {
-                        return mrkt.state_id === province;
-                      })
-                      .map((st) => {
-                        return { id: st.id, name: st.market_name };
-                      })
-                      .concat([{ id: "others", name: "Others" }])
-                  : []
-              }
-              onChange={(e) => {
-                setMarket_Obj(
-                  markets.find((mrkt) => {
-                    return mrkt.id === e.target.value;
-                  })
-                );
-              }}
-            />
-            {market && market === "others" && (
-              <Box sx={{ marginTop: "1em" }}>
-                <SelectInput
-                  // autoFocus
-                  source="nearby_market"
-                  // type="text"
-                  label={translate("Nearby Market")}
-                  disabled={loading}
-                  validate={market && market === "others" ? [required()] : null}
-                  fullWidth
-                  variant="outlined"
-                  choices={
-                    province && markets
-                      ? markets
-                          .filter((mrkt) => {
-                            return mrkt.state_id === province;
-                          })
-                          .map((st) => {
-                            return { id: st.id, name: st.market_name };
-                          })
-                      : []
-                  }
-                  onChange={(e) => {
-                    setNearbyMarket_Obj(
-                      markets.find((mrkt) => {
-                        return mrkt.id === e.target.value;
-                      })
-                    );
-                  }}
-                />
-
-                <AutocompleteInput
-                  autoFocus
-                  source="new_market_name"
-                  label={translate("New Market Name")}
-                  type="text"
-                  disabled={loading}
-                  validate={market && market === "others" ? [required()] : null}
-                  fullWidth
-                  variant="outlined"
-                  onCreate={async (new_markt) => {
-                    const { data: new_mrkt_data, error } =
-                      await createUnregisteredMarket(
-                        null,
-                        "Nigeria",
-                        state_obj?.id,
-                        state_obj?.name,
-                        new_markt,
-                        nearby_market_obj
-                      );
-                    console.log(new_mrkt_data);
-                    setMiniMarkets(miniMarkets.concat(new_mrkt_data));
-                    return {
-                      id: new_mrkt_data[0].id,
-                      name: new_mrkt_data[0].un_reg_market,
-                    };
-                  }}
-                  createItemLabel="Add a new Market: %{item}"
-                  choices={
-                    province && markets && nearby_market && miniMarkets
-                      ? miniMarkets
-                          .filter((mrkt) => {
-                            return mrkt.state_id === province;
-                          })
-                          .map((st) => {
-                            return { id: st.id, name: st.un_reg_market };
-                          })
-                      : []
-                  }
-                  onChange={(e) => {
-                    // console.log(
-                    //   miniMarkets.find((mrkt) => {
-                    //     return mrkt.id === e;
-                    //   })
-                    // );
-                    setNewMarket_Obj(
-                      miniMarkets.find((mrkt) => {
-                        return mrkt.id === e;
-                      })
-                    );
-                  }}
-                />
-              </Box>
-            )}
-          </Box>
-        </Stack>
-      ),
-    },
+    
   ];
 
   const handleSubmit = async ({
@@ -957,10 +701,10 @@ const AccountUpdateWizardForm = ({
               name: auth.business_name,
               // default_currency_code: country_obj.currency_iso.toLowerCase(),
               metadata: {
-                market: { ...market_obj },
-                un_reg_market: {
-                  ...new_market_obj,
-                },
+                // market: { ...market_obj },
+                // un_reg_market: {
+                //   ...new_market_obj,
+                // },
                 state: {
                   ...state_obj,
                 },
@@ -1019,7 +763,7 @@ const AccountUpdateWizardForm = ({
         );
       })} */}
       <SignUpStepper
-        regNewMarket={createUnregisteredMarket}
+        // regNewMarket={createUnregisteredMarket}
         state_obj={state_obj}
         nearby_market_obj={nearby_market_obj}
         new_market_obj={new_market_obj}

@@ -862,11 +862,11 @@ export default function UserShowComp(props) {
           </Stack>
 
           <DetailsList fields={_details_list} title={"Location Info"} />
-          <DetailsList
+          {/* <DetailsList
             fields={_details_market_list}
             title={"Market Info"}
             nw_record={{ reference: "store", source: "store_id" }}
-          />
+          /> */}
         </Stack>
 
         {/* {isXLarge && (
