@@ -637,70 +637,70 @@ const RegionSummary = (props) => {
         </Stack>
       ),
     },
-    {
-      name: "States",
-      comp: (
-        <Stack marginTop={1}>
-          <ReferenceManyCount
-            label="Region States"
-            reference="state"
-            target="state"
-            // source="store_id"
-            // link
-          />
-        </Stack>
-      ),
-    },
-    {
-      name: "Markets",
-      comp: (
-        <Stack marginTop={1}>
-          <ReferenceManyCount
-            label="Region Markets"
-            reference="market"
-            target="market_name"
-            // source="store_id"
-            // link
-          />
-        </Stack>
-      ),
-    },
-    {
-      name: "Exchange Rate",
-      comp: (
-        <Stack
-          marginTop={1}
-          sx={{
-            fontSize: { md: "15px", sm: "15px", xs: "14px" },
-            // color: "#8d9498",
-          }}
-        >
-          <ReferenceOneField
-            label="Exchange Rate"
-            reference="exchange_rate"
-            target="currency_code"
-            source="currency_code"
-            record={{
-              ...record,
-              currency_code: record.currency_code.toUpperCase(),
-            }}
-          >
-            <FunctionField
-              label="Exchange Rate"
-              render={(record) =>
-                `1$ = ${parseFloat(record.average_rate).toFixed(2)} ${
-                  currncy
-                    ? currncy.find(
-                        (c) => c.code === record?.currency_code.toLowerCase()
-                      )?.symbol
-                    : ""
-                }`
-              }
-            />
-          </ReferenceOneField>
-        </Stack>
-      ),
-    },
+    // {
+    //   name: "States",
+    //   comp: (
+    //     <Stack marginTop={1}>
+    //       <ReferenceManyCount
+    //         label="Region States"
+    //         reference="state"
+    //         target="state"
+    //         // source="store_id"
+    //         // link
+    //       />
+    //     </Stack>
+    //   ),
+    // },
+    // {
+    //   name: "Markets",
+    //   comp: (
+    //     <Stack marginTop={1}>
+    //       <ReferenceManyCount
+    //         label="Region Markets"
+    //         reference="market"
+    //         target="market_name"
+    //         // source="store_id"
+    //         // link
+    //       />
+    //     </Stack>
+    //   ),
+    // },
+    // {
+    //   name: "Exchange Rate",
+    //   comp: (
+    //     <Stack
+    //       marginTop={1}
+    //       sx={{
+    //         fontSize: { md: "15px", sm: "15px", xs: "14px" },
+    //         // color: "#8d9498",
+    //       }}
+    //     >
+    //       <ReferenceOneField
+    //         label="Exchange Rate"
+    //         reference="exchange_rate"
+    //         target="currency_code"
+    //         source="currency_code"
+    //         record={{
+    //           ...record,
+    //           currency_code: record.currency_code.toUpperCase(),
+    //         }}
+    //       >
+    //         <FunctionField
+    //           label="Exchange Rate"
+    //           render={(record) =>
+    //             `1$ = ${parseFloat(record.average_rate).toFixed(2)} ${
+    //               currncy
+    //                 ? currncy.find(
+    //                     (c) => c.code === record?.currency_code.toLowerCase()
+    //                   )?.symbol
+    //                 : ""
+    //             }`
+    //           }
+    //         />
+    //       </ReferenceOneField>
+    //     </Stack>
+    //   ),
+    // },
     // {
     //   name: "Status",
     //   comp: (
