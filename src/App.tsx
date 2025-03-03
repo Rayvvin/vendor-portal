@@ -90,7 +90,7 @@ export const App = () => {
         dataProvider={dataProvider}
         authProvider={authProvider}
         // basename="/admin"
-        title={"Afriomarkets Admin"}
+        title={"Rayvvin Vendor Admin"}
         darkTheme={darkTheme}
       >
         <Resource
