@@ -454,12 +454,12 @@ function Home() {
           Home
         </h2>
         <Stack alignItems={"center"}>
-          <Switch onChange={handleChangeView} checked={viewAdmin} />
+          {/* <Switch onChange={handleChangeView} checked={viewAdmin} />
           {viewAdmin ? (
             <p style={{ fontSize: "13px", fontFamily: "Rubik" }}>Admin On</p>
           ) : (
             <p style={{ fontSize: "13px", fontFamily: "Rubik" }}>Admin Off</p>
-          )}
+          )} */}
         </Stack>
       </Stack>
       <Stack
