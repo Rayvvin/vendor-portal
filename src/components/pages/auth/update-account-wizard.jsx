@@ -60,7 +60,7 @@ import SignUpStepper from "../../containers/signup/signupStepperForm";
 import CountryCurrencies from "../../constants/country_currencies";
 import PinInput from "react-pin-input";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-const Logo =  '/assets/img/rayvvin_pngs/Logo.png?url';
+const Logo = "/assets/img/rayvvin_pngs/Logo.png?url";
 // Replace 'YOUR_SUPABASE_URL' and 'YOUR_SUPABASE_KEY' with your Supabase URL and key
 const supabase = createClient(
   import.meta.env.VITE_BASE_URL,
@@ -406,8 +406,19 @@ const AccountUpdateWizardForm = ({
   });
 
   React.useEffect(() => {
-      hndlSbmtRef.current = handleSubmit;
-    }, []);
+    hndlSbmtRef.current = handleSubmit;
+    const fetchCountries = async () => {
+      try {
+        const { data, error } = await supabase.from("country").select("*");
+        if (error) throw error;
+        setCountries(data);
+      } catch (error) {
+        console.error("Error fetching countries:", error);
+      }
+    };
+
+    fetchCountries();
+  }, []);
 
   const Steps = [
     <>
@@ -578,14 +589,18 @@ const AccountUpdateWizardForm = ({
               validate={required()}
               fullWidth={isSmall ? true : false}
               variant="outlined"
-              choices={countries.map((cntry) => {
-                return { id: cntry.country_iso, name: cntry.country };
-              })}
+              choices={
+                countries
+                  ? countries.map((cntry) => {
+                      return { id: cntry.iso_2, name: cntry.display_name };
+                    })
+                  : []
+              }
               sx={{ minWidth: "197px" }}
               onChange={(e) => {
                 setCountry_Obj(
                   countries.find((cntry) => {
-                    return cntry.country_iso === e;
+                    return cntry.iso_2 === e;
                   })
                 );
               }}
@@ -665,7 +680,6 @@ const AccountUpdateWizardForm = ({
         </Stack>
       ),
     },
-    
   ];
 
   const handleSubmit = async ({
@@ -785,10 +799,8 @@ const FormWrapper = () => {
   const [new_market_obj, setNewMarket_Obj] = useState(null);
   const [markets, setMarkets] = useState(null);
   const [miniMarkets, setMiniMarkets] = useState(null);
-  const [countries, setCountries] = useState(CountryCurrencies);
+  const [countries, setCountries] = useState(null);
   const [market_obj, setMarket_Obj] = useState(null);
-
-  
 
   React.useEffect(() => {
     if (

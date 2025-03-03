@@ -360,7 +360,7 @@ const RegistrationWizardForm = ({ hndlSbmtRef }) => {
   const [markets, setMarkets] = useState(null);
   const [miniMarkets, setMiniMarkets] = useState(null);
   const [states, setStates] = useState(null);
-  const [countries, setCountries] = useState(CountryCurrencies);
+  const [countries, setCountries] = useState(null);
   const [market_obj, setMarket_Obj] = useState(null);
   const [state_obj, setState_Obj] = useState(null);
   const [country_obj, setCountry_Obj] = useState(null);
@@ -390,6 +390,18 @@ const RegistrationWizardForm = ({ hndlSbmtRef }) => {
 
   React.useEffect(() => {
     hndlSbmtRef.current = handleSubmit;
+    const fetchCountries = async () => {
+      try {
+        const { data, error } = await supabase.from("country").select("*");
+        if (error) throw error;
+        setCountries(data);
+      } catch (error) {
+        console.error("Error fetching countries:", error);
+      }
+    };
+
+    fetchCountries();
+    
   }, []);
 
   const Steps = [
