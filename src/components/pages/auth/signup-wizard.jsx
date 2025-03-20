@@ -64,7 +64,7 @@ const Logo = "/assets/img/rayvvin_pngs/Logo.png?url";
 const medusa = new Medusa({
   maxRetries: 3,
   baseUrl: import.meta.env.VITE_MEDUSA_URL,
-  apiKey: "usr_01HPESKGDTMNHYK8HXH1A7AP4Q",
+  apiKey: import.meta.env.VITE_MEDUSA_SECRET,
 });
 
 // Replace 'YOUR_SUPABASE_URL' and 'YOUR_SUPABASE_KEY' with your Supabase URL and key
