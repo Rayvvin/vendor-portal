@@ -21,6 +21,7 @@ import useSupabaseRealtime from "./supabase/realTime";
 import SignUpWizard from "./components/pages/auth/signup-wizard";
 import SignInWizard from "./components/pages/auth/signin-wizard";
 import PhoneVerificationWizard from "./components/pages/auth/phone-verification-wizard";
+import VerificationWizard from "./components/pages/auth/verification-wizard"
 import CompleteRegistrationWizard from "./components/pages/auth/complete-registration-wizard";
 import AccountUpdateWizardForm from "./components/pages/auth/update-account-wizard";
 import AuthPage from "./components/pages/auth/auth";
@@ -179,6 +180,7 @@ export const App = () => {
         </CustomRoutes>
         <CustomRoutes noLayout={true}>
           <Route path="/verify-phone" element={<PhoneVerificationWizard />} />
+          <Route path="/verify-email" element={<VerificationWizard />} />
           <Route
             path="/complete-registration"
             element={<AccountUpdateWizardForm />}
