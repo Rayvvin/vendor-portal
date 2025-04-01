@@ -164,6 +164,30 @@ const Footer = ({
     }
   }
 
+  async function generateTerm(email, userType) {
+    try {
+      const response = await fetch("https://qqhnbezrwcbdyidfudcs.supabase.co/functions/v1/generate-terms-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_ANON_KEY}`, // Ensure this is securely stored
+        },
+        body: JSON.stringify({ email, userType }),
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate terms");
+      }
+  
+      return data;
+    } catch (error as any) {
+      console.error("Error generating terms:", error.message);
+      return { error: error.message };
+    }
+  }
+
   // This handler is optional
   handleStep(() => {
     // alert("Going to step 2");
@@ -832,6 +856,9 @@ const SignUpWizardForm = ({ hndlSbmtRef, mode, setMode }) => {
                     password: auth.password,
                   })
                   .then(({ user }) => {
+                    generateTerm(auth.email, "user")
+    .then((result) => console.log("Response:", result))
+    .catch((error) => console.error("Request failed:", error)); 
                     toast.success("User Account Created");
                     setMode("login");
                   });

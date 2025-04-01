@@ -601,6 +601,94 @@ const VerificationWizardForm = ({
         </Box>
       </Stack>
     </>,
+    <>
+    <Stack
+      spacing={0}
+      sx={{ padding: "10px" }}
+      justifyContent={"center"}
+      alignItems={"center"}
+    >
+      <Box
+        // sx={{ marginBlock: "1em" }}
+        justifyContent={"center"}
+        alignItems={"center"}
+      >
+        <Typography
+          sx={{
+            mt: 1,
+            mb: 2,
+            textAlign: "center",
+            fontWeight: "600",
+            lineHeight: "1.2175",
+            color: "var(--title-color)",
+            fontFamily: "Rubik, sans-serif",
+            // whiteSpace: "nowrap",
+            fontSize: "15px",
+          }}
+        >
+          Congratulations on Signing Up!
+        </Typography>
+        {user ? (
+          <>
+          <Stack
+            justifyContent={"center"}
+            alignItems={"center"}
+            sx={{ mt: 3, mb: 3 }}
+          >
+            <CheckCircleOutlineIcon color="secondary" fontSize="large" />
+          </Stack>{" "}
+          <Typography
+            sx={{
+              mt: 1,
+              mb: 1,
+              textAlign: "center",
+              fontWeight: "600",
+              lineHeight: "1.2175",
+              color: "var(--title-color)",
+              fontFamily: "Rubik, sans-serif",
+              // whiteSpace: "nowrap",
+              fontSize: "18px",
+            }}
+          >
+            Join our <a href={"https://chat.whatsapp.com/B8aQorgFMiCHNJ3I4JGiEB"}>whatsapp community</a> to benefit from important updates and insights from like minds.
+          </Typography>
+        </>
+        ) : (
+          <Typography
+            sx={{
+              mt: 3,
+              mb: 3,
+              textAlign: "center",
+              fontWeight: "300",
+              lineHeight: "1.2175",
+              color: "var(--title-color)",
+              fontFamily: "Rubik, sans-serif",
+              // whiteSpace: "nowrap",
+              fontSize: "12px",
+            }}
+          >
+            Retrieving Your Info...
+          </Typography>
+        )}
+
+        <Typography
+          sx={{
+            // mt: 1,
+            mb: 1,
+            textAlign: "center",
+            fontWeight: "300",
+            lineHeight: "1.2175",
+            color: "var(--title-color)",
+            fontFamily: "Rubik, sans-serif",
+            // whiteSpace: "nowrap",
+            fontSize: "10px",
+          }}
+        >
+          We look forward to having you on board!
+        </Typography>
+      </Box>
+    </Stack>
+  </>
   ];
 
   const handleSubmit = async ({
