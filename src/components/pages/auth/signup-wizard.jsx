@@ -182,7 +182,7 @@ const Footer = ({
       }
   
       return data;
-    } catch (error as any) {
+    } catch (error) {
       console.error("Error generating terms:", error.message);
       return { error: error.message };
     }
