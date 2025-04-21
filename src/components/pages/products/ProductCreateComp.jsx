@@ -43,8 +43,11 @@ import {
   useGetIdentity,
   useRecordContext,
   ReferenceArrayInput,
+  TabbedForm,
+  TabbedFormTabs,
+  useGetList,
 } from "react-admin";
-import { useMediaQuery, Fab } from "@mui/material";
+import { useMediaQuery, Fab, CircularProgress } from "@mui/material";
 import { useEffect, useState } from "react";
 import {
   Box,
@@ -55,7 +58,15 @@ import {
   Card,
   Avatar,
 } from "@mui/material";
-import { MoreVert, MoreHoriz } from "@mui/icons-material";
+import {
+  MoreVert,
+  MoreHoriz,
+  SendTimeExtension,
+  Pending,
+  ReportProblem,
+  CheckCircle,
+  Close,
+} from "@mui/icons-material";
 import { useFormContext } from "react-hook-form";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -70,7 +81,7 @@ import { createMultipartFormData } from "../../helpers/helpers";
 import { supabase } from "../../../supabase/SupabaseConfig";
 import MediaPickerInput from "../../elements/mediaPicker/MediaPickerInput";
 
-const Accordion = styled((props) => (
+export const Accordion = styled((props) => (
   <MuiAccordion disableGutters elevation={0} square {...props} />
 ))(({ theme }) => ({
   background: `${
@@ -86,7 +97,7 @@ const Accordion = styled((props) => (
   },
 }));
 
-const AccordionSummary = styled((props) => (
+export const AccordionSummary = styled((props) => (
   <MuiAccordionSummary
     expandIcon={<ArrowForwardIosSharpIcon sx={{ fontSize: "0.9rem" }} />}
     {...props}
@@ -122,7 +133,7 @@ const AccordionSummary = styled((props) => (
   },
 }));
 
-const AccordionDetails = styled(MuiAccordionDetails)(({ theme }) => ({
+export const AccordionDetails = styled(MuiAccordionDetails)(({ theme }) => ({
   display: "flex",
   width: "-webkit-fill-available",
   borderBlock: "",
@@ -156,7 +167,7 @@ const AccordionDetails = styled(MuiAccordionDetails)(({ theme }) => ({
 }));
 
 export const SaveToolbar = (props) => {
-  const { type, product } = props;
+  const { type, product, tabState } = props;
   const [theme, setTheme] = useTheme();
   const translate = useTranslate();
   const isLarge = useMediaQuery((theme) => theme.breakpoints.down("lg"));
@@ -165,6 +176,7 @@ export const SaveToolbar = (props) => {
   const record = useRecordContext();
   const identity = useGetIdentity();
   const [Thumb_data, setThumb_data] = useState(null);
+  const { setValue } = useFormContext();
   const medusa = new Medusa({
     maxRetries: 3,
     baseUrl: import.meta.env.VITE_MEDUSA_URL,
@@ -197,13 +209,32 @@ export const SaveToolbar = (props) => {
     return urls || [];
   }
 
+  useEffect(() => {
+    if (form && form.bulk_product_upload) {
+      console.log(form.bulk_product_upload);
+    }
+  }, [form]);
+
   const handleSubmitWithImage = async (data) => {
     // console.log("Right", data)
-    if (!data.title) {
-      toast.warning(`You need at least a product title to create a product`);
-      return;
+    if (!data.bulk_upload) {
+      if (!data.title) {
+        toast.warning(`You need at least a product title to create a product`);
+        return;
+      }
+    } else {
+      if (!data.title && data.index != null) {
+        setValue(
+          `bulk_product_upload.${data.index}.error_msg`,
+          "You need at least a product title to create a product"
+        );
+        return;
+      }
     }
+
     delete data.sales_channels;
+    delete data.lite_mode;
+    delete data.bulk_product_upload;
     if (!data.images) {
       delete data.images;
     }
@@ -268,7 +299,6 @@ export const SaveToolbar = (props) => {
     }
     if (data.variants && data.variants.length) {
       data.variants = data.variants.map((v) => {
-        // console.log(v)
         let variant = {
           ...v,
           manage_inventory: v.manage_inventory ? true : false,
@@ -306,7 +336,6 @@ export const SaveToolbar = (props) => {
       delete data.newStatus;
     }
     console.log(data.variants);
-
     if (type === "edit") {
       delete data.store_id;
       delete data.external_id;
@@ -322,123 +351,189 @@ export const SaveToolbar = (props) => {
       delete data.profile;
       delete data.profile_id;
       delete data.store;
-
-      medusa.admin.products
-        .update(record?.id, {
-          ...data,
-          // images: data.images.map((img) => extractImageUrls(img.url)[0]),
-          // images: data.images,
-        })
-        .then(({ product }) => {
-          toast.success("Product Updated");
-          redirect("show", "product", record.id);
-        })
-        .catch((error) => {
-          toast.error(`Product Updated Error: ${error.message}`);
-        });
-      // if (data.thumbnail?.rawFile) {
-      //   medusa.admin.uploads
-      //     .create(
-      //       [data.thumbnail?.rawFile].concat(
-      //         data.images?.map((img) => img.rawFile)
-      //       )
-      //     )
-      //     .then(({ uploads }) => {
-      //       // console.log({ in: [data.thumbnail?.rawFile].concat(data.images.map((img) => img.rawFile)), out: uploads});
-      //       if (uploads.length) {
-      //         delete data.thumbnail;
-      //         delete data.images;
-      //       }
-      //       // console.log({ thumbnail: uploads[0].url, images: uploads, ...data });
-      //       medusa.admin.products
-      //         .update(record?.id, {
-      //           thumbnail: uploads.length ? uploads[0].url : record.thumbnail,
-      //           images: uploads.length
-      //             ? uploads.map((img) => img.url)
-      //             : record.images,
-      //           ...data,
-      //         })
-      //         .then(({ product }) => {
-      //           toast.success("Product Updated");
-      //           redirect("show", "product", record.id);
-      //         })
-      //         .catch((error) => {
-      //           toast.error(`Product Updated Error: ${error.message}`);
-      //         });
-      //     });
-      // } else {
-
-      // }
+      delete data.image_upload;
+      if (!data.bulk_upload) {
+        await toast.promise(
+          medusa.admin.products
+            .update(record?.id, {
+              ...data,
+            })
+            .then(({ product }) => {
+              // return product;
+              // toast.success("Product Updated");
+              redirect("show", "product", record.id);
+            })
+            .catch((error) => {
+              // toast.error(`Product Updated Error: ${error.message}`);
+            }),
+          {
+            pending: `${type === "edit" ? "Updating" : "Creating"} Product ${
+              data.status == "draft" ? "as Draft" : ""
+            } ...`,
+            success: `Product ${type === "edit" ? "Updated" : "Created"} ${
+              data.status == "draft" ? "as Draft" : ""
+            }`,
+            error: `Product ${type === "edit" ? "Update" : "Creation"} ${
+              data.status == "draft" ? "as Draft" : ""
+            } Failed`,
+          }
+        );
+      } else {
+        let idx = data.index;
+        delete data.uploaded;
+        delete data.error_msg;
+        delete data.single_prod_open;
+        delete data.bulk_upload;
+        delete data.index;
+        setValue(`bulk_product_upload.${idx}.error_msg`, null);
+        return medusa.admin.products
+          .update(record?.id, {
+            ...data,
+          })
+          .then(({ product }) => {
+            return product;
+          })
+          .catch((error) => {
+            if (idx != null) {
+              setValue(`bulk_product_upload.${idx}.error_msg`, error.message);
+            }
+          });
+      }
     } else {
-      medusa.admin.products
-        .create({
-          // thumbnail: uploads[0].url,
-          // images: uploads.map((img) => extractImageUrls(img.url)[0]),
-          ...data,
-        })
-        .then(({ product }) => {
-          toast.success("New Product Created");
-          redirect("/product");
-        })
-        .catch((error) => {
-          toast.error(`Product Create Error: ${error.message}`);
-        });
-
-      // medusa.admin.uploads
-      //   .create(
-      //     [data.thumbnail?.rawFile].concat(
-      //       data.images.map((img) => img.rawFile)
-      //     )
-      //   )
-      //   .then(({ uploads }) => {
-      //     // console.log({ in: [data.thumbnail?.rawFile].concat(data.images.map((img) => img.rawFile)), out: uploads});
-      //     if (uploads.length) {
-      //       delete data.thumbnail;
-      //       delete data.images;
-      //     }
-      //     // console.log({ thumbnail: uploads[0].url, images: uploads, ...data });
-      //     medusa.admin.products
-      //       .create({
-      //         thumbnail: uploads[0].url,
-      //         images: uploads.map((img) => extractImageUrls(img.url)[0]),
-      //         ...data,
-      //       })
-      //       .then(({ product }) => {
-      //         toast.success("New Product Created");
-      //         redirect("/product");
-      //       })
-      //       .catch((error) => {
-      //         toast.error(`Product Create Error: ${error.message}`);
-      //       });
-      //   });
+      delete data.image_upload;
+      if (!data.bulk_upload) {
+        await toast.promise(
+          medusa.admin.products
+            .create({
+              ...data,
+            })
+            .then(({ product }) => {
+              return product;
+              // toast.success("New Product Created");
+              // redirect("/product");
+            })
+            .catch((error) => {
+              // toast.error(`Product Create Error: ${error.message}`);
+            }),
+          {
+            pending: `${type === "edit" ? "Updating" : "Creating"} Product ${
+              data.status == "draft" ? "as Draft" : ""
+            } ...`,
+            success: `Product ${type === "edit" ? "Updated" : "Created"} ${
+              data.status == "draft" ? "as Draft" : ""
+            }`,
+            error: `Product ${type === "edit" ? "Update" : "Creation"} ${
+              data.status == "draft" ? "as Draft" : ""
+            } Failed`,
+          }
+        );
+      } else {
+        setValue(`bulk_product_upload.${data.index}.error_msg`, null);
+        let idx = data.index;
+        delete data.uploaded;
+        delete data.error_msg;
+        delete data.single_prod_open;
+        delete data.bulk_upload;
+        delete data.index;
+        return medusa.admin.products
+          .create({
+            ...data,
+          })
+          .then(({ product }) => {
+            // console.log(product);
+            return product;
+          })
+          .catch((error) => {
+            if (idx != null) {
+              setValue(`bulk_product_upload.${idx}.error_msg`, error.message);
+            }
+          });
+      }
     }
   };
 
-  const handleSubmit = async (data) => {
-    // console.log(data);
-    delete data.sales_channels;
-    if (!data.options.length) {
-      delete data.options;
-    }
-    if (!data.variants.length) {
-      delete data.variants;
-    }
-    // console.log(uploads);
-    medusa.admin.products
-      .create({ ...data })
-      .then(({ product }) => {
-        toast.success("New Product Created");
-        redirect("/product");
-      })
-      .catch((error) => {
-        toast.error(`Product Create Error: ${error.message}`);
-      });
+  const handleBulkSubmit = async (data) => {
+    const results = await toast.promise(
+      Promise.all(
+        data.bulk_product_upload.map(async (item, index) => {
+          let formData = {};
+          setValue(`bulk_product_upload.${index}.uploaded`, "pending");
+          return await new Promise(async (resolve, reject) => {
+            if (type && type === "edit") {
+              formData = { ...item, newStatus: data.newStatus };
+            } else {
+              formData = { ...item, status: data.status };
+            }
+            await handleSubmitWithImage({
+              ...formData,
+              bulk_upload: true,
+              index: index,
+            })
+              .then((res) => {
+                if (res && res.id) {
+                  setValue(`bulk_product_upload.${index}.uploaded`, "success");
+                  resolve({
+                    status: "success",
+                    index,
+                    res: form.bulk_product_upload[index],
+                  });
+                } else {
+                  setValue(`bulk_product_upload.${index}.uploaded`, "failed");
+                  reject({
+                    status: "error",
+                    index,
+                    res: form.bulk_product_upload[index],
+                  });
+                }
+              })
+              .catch((error) => {
+                setValue(`bulk_product_upload.${index}.uploaded`, "failed");
+                setValue(
+                  `bulk_product_upload.${index}.error_msg`,
+                  error.message
+                );
+                reject({ status: "error", index });
+              });
+          });
+        })
+      ),
+
+      {
+        pending: `${type === "edit" ? "Updating" : "Creating"} Products ${
+          data.status == "draft" ? "as Draft" : ""
+        } ...`,
+        success: `Products ${type === "edit" ? "Updated" : "Created"} ${
+          data.status == "draft" ? "as Draft" : ""
+        }`,
+        error: `Some products ${
+          type === "edit" ? "couldn't be Updated" : "couldn't be created"
+        } ${data.status == "draft" ? "as Draft" : ""} Failed`,
+      }
+    );
+    setTimeout(() => {
+      setValue(
+        `bulk_product_upload`,
+        form.bulk_product_upload.filter(
+          (item, i) =>
+            !results
+              .flatMap((result) => {
+                if (result.status === "success") {
+                  return result.index;
+                } else {
+                  return [];
+                }
+              })
+              .includes(i)
+        )
+      );
+    }, 7000);
   };
 
   return (
     <Toolbar
       sx={{
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
+        alignItems: "center",
         gap: "10px",
         //   flexDirection: "column",
         backgroundColor: `${
@@ -457,50 +552,147 @@ export const SaveToolbar = (props) => {
         disabled
         sx={{ display: "none" }}
       />
+      <Stack></Stack>
+      {/* <BooleanInput
+        source="lite_mode"
+        label=" "
+        disabled
+        defaultValue={true}
+        helperText={`Lite mode ${!form.lite_mode ? "enabled" : "disabled"}`}
+      /> */}
+      {(() => {
+        switch (tabState) {
+          case "tabheader-0":
+            return (
+              <Stack
+                sx={{
+                  justifyContent: "flex-end",
+                  alignItems: "center",
+                  gap: "10px",
+                  flexDirection: "row",
+                  backgroundColor: `${
+                    theme && theme === "dark"
+                      ? isSmall
+                        ? "transparent"
+                        : "#222 !important"
+                      : "#fff !important"
+                  }`,
+                }}
+              >
+                <Button
+                  variant="outlined"
+                  type="button"
+                  color="primary"
+                  // disabled
+                  // fullWidth
+                  style={{
+                    padding: "5px 30px",
+                  }}
+                  onClick={(e) => {
+                    handleSubmitWithImage({ newStatus: "draft", ...form });
+                    // handleSubmitWithImage({ status: "draft", ...form });
+                    // console.log(form);
+                  }}
+                >
+                  {/* {loading && <CircularProgress size={25} thickness={2} />} */}
+                  {translate("Draft")}
+                </Button>
 
-      <Button
-        variant="outlined"
-        type="button"
-        color="primary"
-        // disabled
-        // fullWidth
-        style={{
-          padding: "5px 45px",
-        }}
-        onClick={(e) => {
-          handleSubmitWithImage({ newStatus: "draft", ...form });
-          // handleSubmitWithImage({ status: "draft", ...form });
-          // console.log(form);
-        }}
-      >
-        {/* {loading && <CircularProgress size={25} thickness={2} />} */}
-        {translate("Save Draft")}
-      </Button>
+                <Button
+                  variant="contained"
+                  type="button"
+                  color="primary"
+                  disabled={
+                    identity?.data?.medusa_store?.default_currency_code
+                      ? false
+                      : true
+                  }
+                  // disabled={product && identity?.data?.medusa_store?.default_currency_code ? false: true}
+                  // fullWidth
+                  style={{
+                    padding: "5px 30px",
+                  }}
+                  // onClick={handleSubmit}
+                  onClick={(e) => {
+                    handleSubmitWithImage(
+                      type && type === "edit"
+                        ? { newStatus: "published", ...form }
+                        : { status: "published", ...form }
+                    );
+                  }}
+                >
+                  {/* {loading && <CircularProgress size={25} thickness={2} />} */}
+                  {type && type === "edit"
+                    ? translate("Update")
+                    : translate("Publish")}
+                </Button>
+              </Stack>
+            );
+          case "tabheader-1":
+            return (
+              <Stack
+                sx={{
+                  justifyContent: "flex-end",
+                  alignItems: "center",
+                  gap: "10px",
+                  flexDirection: "row",
+                  backgroundColor: `${
+                    theme && theme === "dark"
+                      ? isSmall
+                        ? "transparent"
+                        : "#222 !important"
+                      : "#fff !important"
+                  }`,
+                }}
+              >
+                <Button
+                  variant="outlined"
+                  type="button"
+                  color="primary"
+                  style={{
+                    padding: "5px 30px",
+                  }}
+                  onClick={(e) => {
+                    handleBulkSubmit({ newStatus: "draft", ...form });
+                  }}
+                >
+                  {/* {loading && <CircularProgress size={25} thickness={2} />} */}
+                  {translate("Bulk Draft")}
+                </Button>
 
-      <Button
-        variant="contained"
-        type="button"
-        color="primary"
-        disabled={
-          identity?.data?.medusa_store?.default_currency_code ? false : true
+                <Button
+                  variant="contained"
+                  type="button"
+                  color="primary"
+                  disabled={
+                    identity?.data?.medusa_store?.default_currency_code
+                      ? false
+                      : true
+                  }
+                  style={{
+                    padding: "5px 30px",
+                  }}
+                  onClick={(e) => {
+                    handleBulkSubmit(
+                      type && type === "edit"
+                        ? { newStatus: "published", ...form }
+                        : { status: "published", ...form }
+                    );
+                  }}
+                >
+                  {/* {loading && <CircularProgress size={25} thickness={2} />} */}
+                  {type && type === "edit"
+                    ? translate("Bulk Update")
+                    : translate("Bulk Publish")}
+                </Button>
+              </Stack>
+            );
+          default:
+            return (
+              <Typography variant="body2">No action for this tab</Typography>
+            );
         }
-        // disabled={product && identity?.data?.medusa_store?.default_currency_code ? false: true}
-        // fullWidth
-        style={{
-          padding: "5px 45px",
-        }}
-        // onClick={handleSubmit}
-        onClick={(e) => {
-          handleSubmitWithImage(
-            type && type === "edit"
-              ? { newStatus: "published", ...form }
-              : { status: "published", ...form }
-          );
-        }}
-      >
-        {/* {loading && <CircularProgress size={25} thickness={2} />} */}
-        {type && type === "edit" ? translate("Update") : translate("Publish")}
-      </Button>
+      })()}
     </Toolbar>
   );
 };
@@ -541,9 +733,6 @@ function NestedVariantInput(props) {
   const identity = useGetIdentity();
   const form = useWatch();
 
-  // useEffect(() => {
-  //   console.log(currncy);
-  // }, [currncy]);
   const createVariantSections = [
     {
       summaryTitle: "General",
@@ -727,6 +916,7 @@ function NestedVariantInput(props) {
                 paddingBottom={{ md: "0px !important" }}
                 width={{ lg: "50%", md: "45%", xs: "100%" }}
                 minWidth={"200px"}
+                sx={{ display: "none" }}
               >
                 <Typography className="input_title">EAN (Barcode)</Typography>
                 <NumberInput
@@ -743,6 +933,7 @@ function NestedVariantInput(props) {
                 paddingBottom={{ md: "0px !important" }}
                 width={{ lg: "50%", md: "45%", xs: "100%" }}
                 minWidth={"200px"}
+                sx={{ display: "none" }}
               >
                 <Typography className="input_title">UPC (Barcode)</Typography>
                 <NumberInput
@@ -1080,6 +1271,7 @@ function NestedVariantInput(props) {
               margin={0}
               justifyContent={"space-around"}
               flexWrap={"wrap"}
+              sx={{ display: "none" }}
             >
               <Stack
                 spacing={2}
@@ -1286,6 +1478,1048 @@ function NestedVariantInput(props) {
   );
 }
 
+function BulkSingleProductInput(props) {
+  const { getSource, scopedFormData, formData, currncy } = props;
+  const { setValue } = useFormContext(); // retrieve all hook methods
+  const fullScreen = useMediaQuery((theme) => theme.breakpoints.down("sm"));
+  const [theme, setTheme] = useTheme();
+  const options = [];
+  const [inner_expanded, setInnerExpanded] = React.useState("panel0");
+  const handleInnerChange = (panel) => (event, newExpanded) => {
+    setInnerExpanded(newExpanded ? panel : false);
+  };
+  const identity = useGetIdentity();
+  const form = useWatch();
+
+  const createSingleProdSections = [
+    {
+      summaryTitle: "General information",
+      summarySubTitle: "To start selling, all you need is a name and a price",
+      body: (
+        <Stack
+          //   maxWidth={{ lg: "90vw", md: "90vw", sm: "90vw", xs: "100vw" }}
+          alignItems={"center"}
+          width="-webkit-fill-available"
+        >
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            flexWrap={"wrap"}
+            marginTop={"10px"}
+          >
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              marginX={1}
+              justifyContent={{ md: "flex-end" }}
+            >
+              <Stack
+                spacing={2}
+                padding={{ md: 3, sm: 2, xs: 0 }}
+                paddingX={{ md: "16px !important" }}
+                paddingBottom={{ md: "0px !important" }}
+                width={{ lg: "50%", md: "85%", xs: "100%" }}
+                minWidth={"220px"}
+              >
+                <Typography className="input_title">Title</Typography>
+                <TextInput
+                  source={getSource("title")}
+                  fullWidth
+                  variant="outlined"
+                />
+              </Stack>
+            </Stack>
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              marginX={1}
+            >
+              <Stack
+                spacing={2}
+                padding={{ md: 3, sm: 2, xs: 0 }}
+                paddingX={{ md: "16px !important" }}
+                paddingBottom={{ md: "0px !important" }}
+                width={{ lg: "50%", md: "85%", xs: "100%" }}
+                minWidth={"220px"}
+              >
+                <Typography className="input_title">Subtitle</Typography>
+                <TextInput
+                  source={getSource("subtitle")}
+                  fullWidth
+                  variant="outlined"
+                />
+              </Stack>
+            </Stack>
+          </Stack>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            width="-webkit-fill-available"
+          >
+            <Stack maxWidth={{ md: "85%" }}>
+              <Stack direction="row" justifyContent={"start"}>
+                <Typography className="section_subtitle">
+                  Give your product a short and clear title.
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent={"start"}>
+                <Typography className="section_subtitle">
+                  50-60 characters is the recommended length for search engines.
+                </Typography>
+              </Stack>
+            </Stack>
+          </Stack>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            flexWrap={"wrap"}
+            // marginTop={"10px"}
+          >
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              marginX={1}
+              justifyContent={{ md: "flex-end" }}
+            >
+              <Stack
+                spacing={2}
+                padding={{ md: 3, sm: 2, xs: 0 }}
+                paddingX={{ md: "16px !important" }}
+                paddingBottom={{ md: "0px !important" }}
+                width={{ lg: "50%", md: "85%", xs: "100%" }}
+                minWidth={"220px"}
+              >
+                <Typography className="input_title">Handle</Typography>
+                <TextInput
+                  source={getSource("handle")}
+                  fullWidth
+                  variant="outlined"
+                />
+              </Stack>
+            </Stack>
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              marginX={1}
+            >
+              <Stack
+                spacing={2}
+                padding={{ md: 3, sm: 2, xs: 0 }}
+                paddingX={{ md: "16px !important" }}
+                paddingBottom={{ md: "0px !important" }}
+                width={{ lg: "50%", md: "85%", xs: "100%" }}
+                minWidth={"220px"}
+              >
+                <Typography className="input_title">Material</Typography>
+                <TextInput
+                  source={getSource("material")}
+                  fullWidth
+                  variant="outlined"
+                />
+              </Stack>
+            </Stack>
+          </Stack>
+
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            width="-webkit-fill-available"
+          >
+            <Stack maxWidth={{ md: "85%" }}>
+              <Stack
+                direction="column"
+                justifyContent={"start"}
+                spacing={1}
+                marginX={{ lg: 6 }}
+              >
+                <Typography className="input_title">Description</Typography>
+                <TextInput
+                  source={getSource("description")}
+                  fullWidth
+                  variant="outlined"
+                  rows={4}
+                  multiline
+                />
+              </Stack>
+              <Stack
+                direction="column"
+                justifyContent={"start"}
+                marginX={{ lg: "42px" }}
+              >
+                <Typography className="section_subtitle">
+                  Give your product a short and clear description.
+                </Typography>
+                <Typography className="section_subtitle">
+                  120-160 characters is the recommended length for search
+                  engines.
+                </Typography>
+              </Stack>
+            </Stack>
+          </Stack>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            width="-webkit-fill-available"
+            marginY={3}
+          >
+            <Stack
+              direction="row"
+              spacing={1}
+              maxWidth={{ md: "85%" }}
+              justifyContent="space-around"
+            >
+              <Stack
+                direction="column"
+                justifyContent={"start"}
+                marginX={{ lg: "42px" }}
+                width={"72%"}
+              >
+                <Typography className="input_title">Discountable</Typography>
+                <Typography className="section_subtitle">
+                  When unchecked discounts will not be applied to this product.
+                </Typography>
+              </Stack>
+              <Stack
+                direction="column"
+                justifyContent={"center"}
+                alignItems={"center"}
+              >
+                <BooleanInput source={getSource("discountable")} label="" />
+              </Stack>
+            </Stack>
+          </Stack>
+        </Stack>
+      ),
+    },
+    {
+      summaryTitle: "Organize",
+      summarySubTitle: "Organize Product",
+      body: (
+        <Stack
+          //   maxWidth={{ lg: "90vw", md: "90vw", sm: "90vw", xs: "100vw" }}
+          alignItems={"center"}
+          width="-webkit-fill-available"
+          // width={{lg:'80vw'}}
+        >
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            flexWrap={"wrap"}
+            marginTop={"10px"}
+          >
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              marginX={1}
+              justifyContent={{ md: "flex-end" }}
+              sx={{ display: "none" }}
+            >
+              <Stack
+                spacing={2}
+                padding={{ md: 3, sm: 2, xs: 0 }}
+                paddingX={{ md: "16px !important" }}
+                paddingBottom={{ md: "0px !important" }}
+                width={{ lg: "50%", md: "85%", xs: "100%" }}
+                minWidth={"220px"}
+              >
+                <Typography className="input_title">Type</Typography>
+                <TextInput
+                  source={getSource("type")}
+                  disabled
+                  fullWidth
+                  variant="outlined"
+                />
+              </Stack>
+            </Stack>
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              marginX={1}
+              sx={{ display: "none" }}
+            >
+              <Stack
+                spacing={2}
+                padding={{ md: 3, sm: 2, xs: 0 }}
+                paddingX={{ md: "16px !important" }}
+                paddingBottom={{ md: "0px !important" }}
+                width={{ lg: "50%", md: "85%", xs: "100%" }}
+                minWidth={"220px"}
+              >
+                <Typography className="input_title">Collection</Typography>
+                <TextInput
+                  source={getSource("collection")}
+                  disabled
+                  fullWidth
+                  variant="outlined"
+                />
+              </Stack>
+            </Stack>
+          </Stack>
+
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            width="-webkit-fill-available"
+          >
+            <Stack maxWidth={{ md: "85%" }}>
+              <Stack
+                direction="column"
+                justifyContent={"start"}
+                spacing={1}
+                marginX={{ lg: 6 }}
+              >
+                <Typography className="input_title">Tags</Typography>
+                <AutocompleteArrayInput
+                  source={getSource("tags")}
+                  label=" "
+                  fullWidth
+                  variant="outlined"
+                  rows={4}
+                  multiline
+                  onCreate={(newOptionName) => {
+                    const newOption = {
+                      id: newOptionName.toLowerCase(),
+                      name: newOptionName,
+                    };
+                    options.push(newOption);
+                    return newOption;
+                  }}
+                  // helperText="Eg. Blue, Red, Black"
+                  choices={options}
+                  createItemLabel={`Add a new tag : %{item}`}
+                />
+              </Stack>
+              <Stack
+                direction="column"
+                justifyContent={"start"}
+                marginX={{ lg: "62px" }}
+                width={"100%"}
+                paddingY={2}
+              >
+                <Typography className="section_subtitle">
+                  Don&apos;t worry, It&apos;s is optional, You can always come
+                  back to this.
+                </Typography>
+              </Stack>
+            </Stack>
+          </Stack>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            width="-webkit-fill-available"
+            marginY={3}
+            sx={{ display: "none" }}
+          >
+            <Stack
+              direction="row"
+              spacing={1}
+              maxWidth={{ md: "85%" }}
+              // justifyContent="space-around"
+              justifyContent={{
+                md: "center",
+                lg: "center",
+                sm: "space-around",
+              }}
+            >
+              <Stack
+                direction="column"
+                justifyContent={{ md: "start", lg: "center" }}
+                marginX={{ lg: "45px" }}
+                width={{ xs: "80%", sm: "62%" }}
+              >
+                <Typography className="input_title">Sales Channels</Typography>
+                <Typography className="section_subtitle">
+                  This product will only be available in the default sales
+                  channel if left untouched.
+                </Typography>
+              </Stack>
+              <Stack
+                direction="column"
+                justifyContent={"center"}
+                alignItems={"center"}
+                // marginX={{ lg: "42px" }}
+                // padding={2}
+              >
+                <BooleanInput
+                  source={getSource("sales_channels")}
+                  disabled
+                  label=""
+                />
+              </Stack>
+            </Stack>
+          </Stack>
+        </Stack>
+      ),
+    },
+    {
+      summaryTitle: "Variants",
+      summarySubTitle: "Add variations of this product",
+      body: (
+        <Stack
+          //   maxWidth={{ lg: "90vw", md: "90vw", sm: "90vw", xs: "100vw" }}
+          alignItems={"center"}
+          width="-webkit-fill-available"
+          spacing={2}
+        >
+          <Stack direction={"row"} justifyContent={"start"}>
+            <Stack
+              maxWidth={"-webkit-fill-available"}
+              width={{ lg: "50vw" }}
+              spacing={3}
+            >
+              <Stack maxWidth={"-webkit-fill-available"}>
+                {/* <Stack direction="row" justifyContent={"start"}>
+                  <Typography className="section_subtitle">
+                    Add variations of this product.
+                  </Typography>
+                </Stack> */}
+                <Stack direction="row" justifyContent={"start"}>
+                  <Typography className="section_subtitle">
+                    Offer your customers different options for color, format,
+                    size, shape, etc.
+                  </Typography>
+                </Stack>
+              </Stack>
+
+              <Stack maxWidth={"-webkit-fill-available"}>
+                <Stack direction="row" justifyContent={"start"}>
+                  <Typography className="input_title">
+                    Product Options
+                  </Typography>
+                </Stack>
+                <Stack
+                  direction="row"
+                  justifyContent={"start"}
+                  sx={{
+                    "& .RaSimpleFormIterator-line, .ra-input": {
+                      marginY: "10px",
+                    },
+                    // "& .MuiInputLabel-root, span": {
+                    //   fontSize: '18px',
+                    //   fontWeight: '500'
+                    // }
+                    "& .RaSimpleFormIterator-inline": {
+                      alignItems: "center !important",
+                    },
+                  }}
+                >
+                  <ArrayInput source={getSource("options")} label=" ">
+                    <SimpleFormIterator
+                      inline
+                      sx={{
+                        gap: "10px",
+                        // flexWrap: `${isMedium ? "nowrap" : "wrap"}`,
+                      }}
+                    >
+                      <FormDataConsumer>
+                        {({
+                          scopedFormData: scpdFrmData,
+                          formData,
+                          getSource,
+                        }) => {
+                          return (
+                            <React.Fragment>
+                              <Stack
+                                direction={"row"}
+                                width={"-webkit-fill-available"}
+                                alignItems={"start"}
+                                justifyContent={"space-between"}
+                              >
+                                <TextInput
+                                  source={getSource("title")}
+                                  label="Option Title"
+                                  helperText="Eg. Color"
+                                />
+                                {scpdFrmData["title"] &&
+                                  scpdFrmData?.options &&
+                                  !scpdFrmData?.options
+                                    .map((opt) => opt?.title?.toLowerCase())
+                                    .includes(
+                                      scpdFrmData["title"].toLowerCase()
+                                    ) && (
+                                    <Button
+                                      // variant="outlined"
+                                      sx={{
+                                        height: "min-content",
+                                        marginRight: "15px",
+                                        marginTop: "10px",
+                                      }}
+                                      onClick={() => {
+                                        const addProductOption = async (
+                                          option
+                                        ) => {
+                                          // Perform your API call to add a new option here
+                                          try {
+                                            const response =
+                                              await medusa.admin.products.addOption(
+                                                record.id,
+                                                {
+                                                  title: option.title,
+                                                }
+                                              );
+                                            const newOption =
+                                              response.product.options.filter(
+                                                (e) => {
+                                                  return (
+                                                    e.title === option.title
+                                                  );
+                                                }
+                                              )[0];
+                                            toast.success(
+                                              `Added new option: ${newOption.title}`
+                                            );
+                                            if (record) {
+                                              medusa.admin.products
+                                                .retrieve(record.id)
+                                                .then(({ product }) => {
+                                                  // console.log(product);
+                                                  setProduct(product);
+                                                });
+                                            }
+                                          } catch (error) {
+                                            toast.error(
+                                              `Error adding option`,
+                                              error
+                                            );
+                                          }
+                                        };
+
+                                        addProductOption(scpdFrmData);
+                                      }}
+                                    >
+                                      Create Option
+                                    </Button>
+                                  )}
+                              </Stack>
+                              <AutocompleteArrayInput
+                                // disabled={
+                                //   type === "edit"
+                                //     ? (product &&
+                                //         product.options &&
+                                //         product.options.length &&
+                                //         scpdFrmData["title"] == null) ||
+                                //       !product?.options
+                                //         .map((opt) => opt?.title?.toLowerCase())
+                                //         .includes(
+                                //           scpdFrmData["title"].toLowerCase()
+                                //         )
+                                //     : false
+                                // }
+                                sx={{
+                                  "& .RaAutocompleteInput-textField": {
+                                    xl: { minWidth: "44vw" },
+                                    lg: { minWidth: "41vw" },
+                                    md: { minWidth: "75vw" },
+                                    sm: { minWidth: "75vw" },
+                                  },
+                                }}
+                                // fullWidth
+                                onCreate={(newOptionName) => {
+                                  console.log(scpdFrmData);
+                                  const newOption = {
+                                    id: newOptionName.toLowerCase(),
+                                    name: newOptionName,
+                                  };
+                                  options.push(newOption);
+                                  return newOption;
+                                }}
+                                label="Variations"
+                                source={getSource("variations")}
+                                record={scpdFrmData}
+                                helperText="Eg. Blue, Red, Black"
+                                choices={options.concat(
+                                  scpdFrmData?.variations?.map((v) => {
+                                    return { id: v, name: v };
+                                  })
+                                )}
+                                createItemLabel={`Add a new ${scpdFrmData["title"]} : %{item}`}
+                              />
+                            </React.Fragment>
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </SimpleFormIterator>
+                  </ArrayInput>
+                </Stack>
+              </Stack>
+              <Stack maxWidth={"-webkit-fill-available"}>
+                <Stack direction="row" justifyContent={"start"}>
+                  <Typography className="input_title">
+                    Product Variants
+                  </Typography>
+                </Stack>
+                <Stack
+                  direction="row"
+                  justifyContent={"start"}
+                  sx={{
+                    "& .RaSimpleFormIterator-line, .ra-input": {
+                      marginY: "10px",
+                    },
+                    // "& .MuiInputLabel-root, span": {
+                    //   fontSize: '18px',
+                    //   fontWeight: '500'
+                    // }
+                  }}
+                >
+                  <ArrayInput source={getSource("variants")} label=" ">
+                    <SimpleFormIterator
+                      fullWidth
+                      inline
+                      sx={{ gap: "10px", "& .RaSimpleFormIterator-form": {} }}
+                    >
+                      <FormDataConsumer>
+                        {({
+                          scopedFormData: scpdFrmData,
+                          formData: frmData,
+                          getSource,
+                        }) => {
+                          return (
+                            <NestedVariantInput
+                              scopedFormData={scpdFrmData}
+                              getSource={getSource}
+                              formData={scopedFormData}
+                              currncy={currncy}
+                              bulk_upload={true}
+                            />
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </SimpleFormIterator>
+                  </ArrayInput>
+                </Stack>
+              </Stack>
+            </Stack>
+          </Stack>
+        </Stack>
+      ),
+    },
+    {
+      summaryTitle: "Thumbnail",
+      summarySubTitle:
+        "Used to represent your product during checkout, social sharing and more.",
+      body: (
+        <Stack
+          maxWidth={{ lg: "90vw", md: "80vw", sm: "75vw", xs: "70vw" }}
+          alignItems={"center"}
+          justifyContent={"center"}
+          width="-webkit-fill-available"
+        >
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            width="-webkit-fill-available"
+          >
+            <Stack>
+              <Stack
+                direction="column"
+                // maxWidth={{ md: "85%" }}
+                justifyContent={"center"}
+                alignItems={"center"}
+                width="80vw"
+                sx={{
+                  "& .ra-input-pictures": {
+                    display: "grid",
+                  },
+                }}
+              >
+                <MediaPickerInput
+                  source={getSource("thumbnail")}
+                  upload_source={getSource("image_upload")}
+                  getSource={getSource}
+                  record={scopedFormData}
+                  type="single"
+                />
+              </Stack>
+            </Stack>
+          </Stack>
+        </Stack>
+      ),
+    },
+    {
+      summaryTitle: "Media",
+      summarySubTitle: "Add images to your product.",
+      body: (
+        <Stack
+          //   maxWidth={{ lg: "90vw", md: "90vw", sm: "90vw", xs: "100vw" }}
+          alignItems={"center"}
+          width="-webkit-fill-available"
+        >
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            width="-webkit-fill-available"
+          >
+            <Stack>
+              <Stack
+                direction="column"
+                // maxWidth={{ md: "85%" }}
+                justifyContent={"center"}
+                alignItems={"center"}
+                width="80vw"
+                sx={{
+                  "& .ra-input-pictures": {
+                    display: "grid",
+                  },
+                }}
+              >
+                <MediaPickerInput
+                  source={getSource("images")}
+                  upload_source={getSource("image_upload")}
+                  record={scopedFormData}
+                  getSource={getSource}
+                />
+              </Stack>
+            </Stack>
+          </Stack>
+        </Stack>
+      ),
+    },
+  ];
+  return (
+    <Stack width={"100%"} spacing={1}>
+      <Stack
+        className="stat-card"
+        paddingY={1}
+        paddingX={2}
+        overflow={"auto"}
+        width={"100%"}
+        direction={"row"}
+        borderRadius={2}
+        border={"2px solid rgba(228, 228, 231, 1)"}
+        spacing={1}
+        justifyContent={"space-between"}
+        // onClick={() => {
+        //   redirect("show", "region", id);
+        // }}
+      >
+        <Stack direction={"row"} spacing={2}>
+          <Stack
+            justifyContent={"center"}
+            alignItems={"center"}
+            backgroundColor={"rgba(243, 244, 246, 1)"}
+            paddingX={1}
+            borderRadius={2}
+          >
+            <Avatar
+              src={scopedFormData["thumbnail"]}
+              alt="Product Thumbnail"
+              sx={{ borderRadius: "9px !important" }}
+            >
+              <MoreHoriz />
+            </Avatar>
+          </Stack>
+          <Stack justifyContent={"center"} alignItems={"stretch"}>
+            <Typography
+              sx={{
+                fontSize: { md: "17px", sm: "15px", xs: "13px" },
+                fontWeight: "600",
+                // textTransform: "capitalize",
+              }}
+            >
+              {scopedFormData["title"] && scopedFormData["title"] !== ""
+                ? `${scopedFormData["title"]}`
+                : `Unknown Product`}
+            </Typography>
+
+            <Typography
+              sx={{
+                fontSize: { md: "14px", sm: "13px", xs: "12px" },
+                color: "#8d9498",
+              }}
+            >
+              {scopedFormData["subtitle"] && scopedFormData["subtitle"] !== ""
+                ? `${scopedFormData["subtitle"]}`
+                : `Subtitle`}
+              {` - `}
+              {scopedFormData["handle"] && scopedFormData["handle"] !== ""
+                ? `${scopedFormData["handle"]}`
+                : `Handle`}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: { md: "11px", sm: "11px", xs: "10px" },
+                color: "#8d9498",
+                fontStyle: "italic",
+              }}
+            >
+              {scopedFormData["options"] && scopedFormData["options"].length
+                ? `${scopedFormData["options"].length} Option${
+                    scopedFormData["options"].length == 1 ? "" : "s"
+                  }`
+                : `Options`}
+              {` - `}
+              {scopedFormData["variants"] && scopedFormData["variants"].length
+                ? `${scopedFormData["variants"].length} Variant${
+                    scopedFormData["variants"].length == 1 ? "" : "s"
+                  }`
+                : `Variants`}
+            </Typography>
+          </Stack>
+        </Stack>
+        <span>
+          <Button
+            sx={{ minWidth: "fit-content" }}
+            onClick={() => {
+              setValue(getSource("single_prod_open"), true);
+            }}
+          >
+            <MoreVert fontSize="medium" />
+          </Button>
+          <TextInput
+            sx={{ display: "none" }}
+            source={getSource("uploaded")}
+            record={scopedFormData}
+            defaultValue={null}
+            onChange={(e) => {
+              // console.log(getSource("uploaded"));
+              // console.log(scopedFormData);
+            }}
+          />
+          <TextInput
+            sx={{ display: "none" }}
+            source={getSource("error_msg")}
+            record={scopedFormData}
+            defaultValue={null}
+            onChange={(e) => {
+              // console.log(getSource("uploaded"));
+              // console.log(scopedFormData);
+            }}
+          />
+          <Button sx={{ minWidth: "fit-content" }} onClick={() => {}}>
+            {scopedFormData["uploaded"] === "pending" ? (
+              <CircularProgress
+                size={20}
+                sx={{
+                  color: `${
+                    theme && theme === "dark" ? "#8D9498" : "rgba(0, 0, 0, .87)"
+                  }`,
+                }}
+              />
+            ) : scopedFormData["uploaded"] === "failed" ? (
+              <ReportProblem fontSize="medium" color="warning" />
+            ) : scopedFormData["uploaded"] === "success" ? (
+              <CheckCircle fontSize="medium" />
+            ) : (
+              <Pending fontSize="medium" />
+            )}
+          </Button>
+        </span>
+        <BooleanInput
+          sx={{ display: "none" }}
+          source={getSource("single_prod_open")}
+          record={scopedFormData}
+          onChange={(e) => {
+            console.log(getSource("single_prod_open"));
+            console.log(scopedFormData);
+          }}
+        />
+        <Dialog
+          open={scopedFormData["single_prod_open"]}
+          onClose={() => {
+            setValue(getSource("single_prod_open"), false);
+          }}
+          scroll={"paper"}
+          aria-labelledby="scroll-dialog-title"
+          aria-describedby="scroll-dialog-description"
+          fullScreen={true}
+          fullWidth={true}
+        >
+          <DialogTitle
+            id="scroll-dialog-title"
+            sx={{
+              justifyContent: "space-between",
+              display: "flex",
+            }}
+          >
+            <Typography
+              sx={{
+                color: `${
+                  theme && theme === "dark" ? "#8D9498" : "rgba(0, 0, 0, .87)"
+                }`,
+
+                fontFamily: "Rubik !important",
+                fontWeight: "500",
+                fontSize: "24px",
+              }}
+            >
+              {`Bulk Upload  >  ${
+                scopedFormData["title"] && scopedFormData["title"] !== ""
+                  ? ` ${scopedFormData["title"]}`
+                  : `New Product #${
+                      getSource("single_prod_open").split(".")[1]
+                    }`
+              } `}
+            </Typography>
+            <Button
+              sx={{ minWidth: "fit-content" }}
+              onClick={() => {
+                setValue(getSource("single_prod_open"), false);
+              }}
+            >
+              <Close fontSize="medium" />
+            </Button>
+          </DialogTitle>
+          <DialogContent dividers={"paper"}>
+            <DialogContentText
+              id="scroll-dialog-description"
+              // ref={descriptionElementRef}
+              tabIndex={-1}
+              sx={{
+                backgroundColor: `${
+                  theme && theme === "dark" ? "#222" : "#fff"
+                }`,
+                // "& .MuiCard-root": {
+                //   backgroundColor: `${theme && theme === "dark" ? "#222" : "#fff"}`,
+                // },
+                fontFamily: "Rubik !important",
+                "& .MuiTypography-root, p, span": {
+                  fontFamily: "Rubik !important",
+                  //   fontSize: "13px !important",
+                },
+
+                "& .section_subtitle": {
+                  color: `${theme && theme === "dark" ? "#8D9498" : "#6b7280"}`,
+                  fontSize: "14px !important",
+                },
+                "& .input_title": {
+                  fontWeight: "500",
+                  fontSize: "14px !important",
+                },
+              }}
+            >
+              {createSingleProdSections.map((createSection, index) => {
+                return (
+                  <CreateAccordions
+                    createSection={createSection}
+                    index={index}
+                    key={index}
+                    expanded={inner_expanded}
+                    handleChange={handleInnerChange}
+                  />
+                );
+              })}
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setValue(getSource("single_prod_open"), false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setValue(getSource("single_prod_open"), false);
+                console.log(form);
+              }}
+            >
+              Save and Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Stack>
+      <Typography
+        sx={{
+          fontSize: { md: "11px", sm: "11px", xs: "10px" },
+          color: "warning.main",
+          fontStyle: "italic",
+          textAlign: "center",
+        }}
+      >
+        {scopedFormData["error_msg"] ? scopedFormData["error_msg"] : null}
+      </Typography>
+    </Stack>
+  );
+}
+
+const hideIfLiteMode = (props) => {
+  const form = useWatch();
+  const liteMode = form?.lite_mode;
+  useEffect(() => {
+    console.log(liteMode);
+  }, [liteMode]);
+  return liteMode ? { display: "none" } : {};
+};
+
+const SingleProductForm = ({
+  product,
+  type,
+  theme,
+  createSections,
+  expanded,
+  handleChange,
+  currncy,
+  setForm,
+  identity,
+}) => {
+  const formValues = useWatch();
+
+  return formValues &&
+    (type === "edit" ||
+      (!formValues["bulk_product_upload"] ||
+        !formValues["bulk_product_upload"].length)) ? (
+      createSections.map((createSection, index) => (
+        <CreateAccordions
+          createSection={createSection}
+          index={index}
+          key={index}
+          handleChange={handleChange}
+          expanded={expanded}
+        />
+      ))
+    ) : (
+      <Stack
+        border={`1px dashed ${
+          theme && theme === "dark" ? "rgba(244, 244, 244, .4)" : "#007867"
+        }`}
+        borderRadius="6px"
+        paddingY={7}
+        paddingX={5}
+        width="100%"
+        justifyContent="center"
+        fontSize="14px"
+        color={"#6b7280"}
+        alignItems={"center"}
+      >
+        <>
+          <p style={{ fontSize: "13px", textAlign: "center" }}>
+            <span>
+              Single product upload disabled when{" "}
+              <span className="input_title">
+                {formValues.bulk_product_upload.length} Product
+                {formValues.bulk_product_upload.length == 1 ? "" : "s"}
+              </span>{" "}
+              {formValues.bulk_product_upload.length == 1 ? " is " : " are "}
+              currently being {type == "edit" ? "edited" : "created"} in the bulk upload section
+            </span>
+          </p>
+          <p
+            style={{
+              fontSize: "11px",
+              fontStyle: "italic",
+              textAlign: "center",
+            }}
+          >
+            {`Clear the bulk upload to enable single product upload`}
+          </p>
+        </>
+      </Stack>
+    );
+};
+
 export default function ProductCreateComp(props) {
   const { type } = props;
   const redirect = useRedirect();
@@ -1296,19 +2530,34 @@ export default function ProductCreateComp(props) {
   const record = useRecordContext();
   const identity = useGetIdentity();
   const [product, setProduct] = React.useState(null);
+  const [products, setProducts] = React.useState(null);
   const [currncy, setCurrncy] = useState(null);
+  const [form, setForm] = useState(null);
+  const [tabState, setTabState] = useState("tabheader-0");
   const medusa = new Medusa({
     maxRetries: 3,
     baseUrl: import.meta.env.VITE_MEDUSA_URL,
     apiKey: identity?.data?.medusa_user?.api_token,
   });
+  const { data, total, isPending, error, refetch, meta } = useGetList(
+    "product",
+    {
+      filter: { store_id: identity?.data?.medusa_user?.store_id },
+    }
+  );
 
   const handleChange = (panel) => (event, newExpanded) => {
     setExpanded(newExpanded ? panel : false);
   };
 
   useEffect(() => {
-    if (record && identity.data && identity.data.medusa_user && identity.data.medusa_user.api_token) {
+    if (
+      record &&
+      identity.data &&
+      identity.data.medusa_user &&
+      identity.data.medusa_user.api_token &&
+      !product
+    ) {
       medusa.admin.products.retrieve(record.id).then(({ product }) => {
         setProduct(product);
       });
@@ -1316,10 +2565,38 @@ export default function ProductCreateComp(props) {
   }, [record, identity]);
 
   useEffect(() => {
-    if (product) {
-      // console.log(product);
+    
+    if (
+      data &&
+      record &&
+      identity?.data?.medusa_user?.store_id &&
+      data.length > 0 &&
+      !products
+    ) {
+      console.log("Hit");
+      let nw_list = data.map((p) => p.id).filter((p) => p.id !== record.id);
+      medusa.products
+        .list(
+          { id: nw_list },
+          {
+            expand: "variants",
+          }
+        )
+        .then(({ products, limit, offset, count }) => {
+          setProducts(
+            products.map((p) => {
+              return {
+                ...p,
+                images: p.images.map((img) => img.url),
+                store_id: identity?.data?.medusa_user?.store_id,
+              };
+            }).filter(
+              (p) => nw_list.includes(p.id) && p.id !== record.id
+            )
+          );
+        });
     }
-  }, [product]);
+  }, [data, identity, record]);
 
   useEffect(() => {
     async function fetchCurrencyObj() {
@@ -1360,7 +2637,7 @@ export default function ProductCreateComp(props) {
               maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
               overflow={"hidden"}
               direction={"row"}
-              margin={0}
+              marginX={1}
               justifyContent={{ md: "flex-end" }}
             >
               <Stack
@@ -1380,7 +2657,7 @@ export default function ProductCreateComp(props) {
               maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
               overflow={"hidden"}
               direction={"row"}
-              margin={0}
+              marginX={1}
             >
               <Stack
                 spacing={2}
@@ -1424,7 +2701,7 @@ export default function ProductCreateComp(props) {
               maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
               overflow={"hidden"}
               direction={"row"}
-              margin={0}
+              marginX={1}
               justifyContent={{ md: "flex-end" }}
             >
               <Stack
@@ -1444,7 +2721,7 @@ export default function ProductCreateComp(props) {
               maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
               overflow={"hidden"}
               direction={"row"}
-              margin={0}
+              marginX={1}
             >
               <Stack
                 spacing={2}
@@ -1552,8 +2829,9 @@ export default function ProductCreateComp(props) {
               maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
               overflow={"hidden"}
               direction={"row"}
-              margin={0}
+              marginX={1}
               justifyContent={{ md: "flex-end" }}
+              sx={{ display: "none" }}
             >
               <Stack
                 spacing={2}
@@ -1577,7 +2855,8 @@ export default function ProductCreateComp(props) {
               maxWidth={{ md: "45%", sm: "80vw", xs: "90vw" }}
               overflow={"hidden"}
               direction={"row"}
-              margin={0}
+              marginX={1}
+              sx={{ display: "none" }}
             >
               <Stack
                 spacing={2}
@@ -1650,6 +2929,7 @@ export default function ProductCreateComp(props) {
             justifyContent={"space-around"}
             width="-webkit-fill-available"
             marginY={3}
+            sx={{ display: "none" }}
           >
             <Stack
               direction="row"
@@ -1804,10 +3084,12 @@ export default function ProductCreateComp(props) {
                                               `Added new option: ${newOption.title}`
                                             );
                                             if (record) {
-                                              medusa.admin.products.retrieve(record.id).then(({ product }) => {
-                                                // console.log(product);
-                                                setProduct(product);
-                                              });
+                                              medusa.admin.products
+                                                .retrieve(record.id)
+                                                .then(({ product }) => {
+                                                  // console.log(product);
+                                                  setProduct(product);
+                                                });
                                             }
                                           } catch (error) {
                                             toast.error(
@@ -1826,15 +3108,17 @@ export default function ProductCreateComp(props) {
                               </Stack>
                               <AutocompleteArrayInput
                                 disabled={
-                                  (product &&
-                                    product.options &&
-                                    product.options.length &&
-                                    scopedFormData["title"] == null) ||
-                                  !product?.options
-                                    .map((opt) => opt?.title?.toLowerCase())
-                                    .includes(
-                                      scopedFormData["title"].toLowerCase()
-                                    )
+                                  type === "edit"
+                                    ? (product &&
+                                        product.options &&
+                                        product.options.length &&
+                                        scopedFormData["title"] == null) ||
+                                      !product?.options
+                                        .map((opt) => opt?.title?.toLowerCase())
+                                        .includes(
+                                          scopedFormData["title"].toLowerCase()
+                                        )
+                                    : false
                                 }
                                 sx={{
                                   "& .RaAutocompleteInput-textField": {
@@ -1905,6 +3189,7 @@ export default function ProductCreateComp(props) {
                             getSource={getSource}
                             formData={formData}
                             currncy={currncy}
+                            setForm={setForm}
                           />
                         )}
                       </FormDataConsumer>
@@ -1917,171 +3202,171 @@ export default function ProductCreateComp(props) {
         </Stack>
       ),
     },
-    {
-      summaryTitle: "Attributes",
-      summarySubTitle: "Used for shipping and customs purposes.",
-      body: (
-        <Stack
-          //   maxWidth={{ lg: "90vw", md: "90vw", sm: "90vw", xs: "100vw" }}
-          alignItems={"center"}
-          width="-webkit-fill-available"
-        >
-          <Stack direction={"row"} justifyContent={"start"}>
-            <Stack maxWidth={"-webkit-fill-available"} spacing={3}>
-              <Stack maxWidth={"-webkit-fill-available"}></Stack>
-            </Stack>
-          </Stack>
-          <Stack maxWidth={"-webkit-fill-available"}>
-            <Stack
-              direction={"row"}
-              justifyContent={"space-around"}
-              flexWrap={"wrap"}
-              marginTop={"20px"}
-            >
-              <Stack justifyContent={"start"} spacing={1}>
-                {/* <Typography className="section_subtitle">
-                Used for shipping and customs purposes.
-              </Typography> */}
-                <Typography className="input_title">Dimensions</Typography>
-              </Stack>
-              <Stack
-                width={"-webkit-fill-available"}
-                maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
-                overflow={"hidden"}
-                direction={"row"}
-                margin={0}
-                justifyContent={"space-around"}
-                flexWrap={"wrap"}
-              >
-                <Stack
-                  spacing={2}
-                  padding={{ md: 3, sm: 2, xs: 0 }}
-                  paddingX={{ md: "16px !important" }}
-                  paddingBottom={{ md: "0px !important" }}
-                  width={{ lg: "20%", md: "45%", xs: "100%" }}
-                  minWidth={"200px"}
-                >
-                  <Typography className="input_title">Width</Typography>
-                  <NumberInput source="width" fullWidth variant="outlined" />
-                </Stack>
-                <Stack
-                  spacing={2}
-                  padding={{ md: 3, sm: 2, xs: 0 }}
-                  paddingX={{ md: "16px !important" }}
-                  paddingBottom={{ md: "0px !important" }}
-                  width={{ lg: "20%", md: "45%", xs: "100%" }}
-                  minWidth={"200px"}
-                >
-                  <Typography className="input_title">Length</Typography>
-                  <NumberInput source="length" fullWidth variant="outlined" />
-                </Stack>
-                <Stack
-                  spacing={2}
-                  padding={{ md: 3, sm: 2, xs: 0 }}
-                  paddingX={{ md: "16px !important" }}
-                  paddingBottom={{ md: "0px !important" }}
-                  width={{ lg: "20%", md: "45%", xs: "100%" }}
-                  minWidth={"200px"}
-                >
-                  <Typography className="input_title">Height</Typography>
-                  <NumberInput source="height" fullWidth variant="outlined" />
-                </Stack>
-                <Stack
-                  spacing={2}
-                  padding={{ md: 3, sm: 2, xs: 0 }}
-                  paddingX={{ md: "16px !important" }}
-                  paddingBottom={{ md: "0px !important" }}
-                  width={{ lg: "20%", md: "45%", xs: "100%" }}
-                  minWidth={"200px"}
-                >
-                  <Typography className="input_title">Weight</Typography>
-                  <NumberInput source="weight" fullWidth variant="outlined" />
-                </Stack>
-              </Stack>
-            </Stack>
-          </Stack>
-          <Stack maxWidth={"-webkit-fill-available"}>
-            <Stack direction="row" justifyContent={"start"}>
-              <Typography className="input_title">Customs</Typography>
-            </Stack>
-            <Stack
-              direction={"row"}
-              justifyContent={"space-around"}
-              flexWrap={"wrap"}
-              marginTop={"10px"}
-            >
-              <Stack
-                width={"-webkit-fill-available"}
-                maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
-                overflow={"hidden"}
-                direction={"row"}
-                margin={0}
-                justifyContent={"space-around"}
-                flexWrap={"wrap"}
-              >
-                <Stack
-                  spacing={2}
-                  padding={{ md: 3, sm: 2, xs: 0 }}
-                  paddingX={{ md: "16px !important" }}
-                  paddingBottom={{ md: "0px !important" }}
-                  width={{ lg: "50%", md: "45%", xs: "100%" }}
-                  minWidth={"250px"}
-                >
-                  <Typography className="input_title">MID Code</Typography>
-                  <NumberInput source="mid_code" fullWidth variant="outlined" />
-                </Stack>
-                <Stack
-                  spacing={2}
-                  padding={{ md: 3, sm: 2, xs: 0 }}
-                  paddingX={{ md: "16px !important" }}
-                  paddingBottom={{ md: "0px !important" }}
-                  width={{ lg: "50%", md: "45%", xs: "100%" }}
-                  minWidth={"250px"}
-                >
-                  <Typography className="input_title">HS Code</Typography>
-                  <NumberInput source="hs_code" fullWidth variant="outlined" />
-                </Stack>
-              </Stack>
-              <Stack
-                width={"-webkit-fill-available"}
-                maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
-                overflow={"hidden"}
-                direction={"row"}
-                margin={0}
-                // marginLeft={{lg: '15px', md: '20px'}}
-                justifyContent={"start"}
-                flexWrap={"wrap"}
-              >
-                <Stack
-                  spacing={2}
-                  padding={{ md: 3, sm: 2, xs: 0 }}
-                  paddingX={{ md: "16px !important" }}
-                  paddingBottom={{ md: "0px !important" }}
-                  width={{ lg: "50%", md: "45%", xs: "100%" }}
-                  minWidth={"250px"}
-                >
-                  <Typography className="input_title">
-                    Country of origin
-                  </Typography>
-                  <NumberInput
-                    source="origin_country"
-                    fullWidth
-                    variant="outlined"
-                  />
-                </Stack>
-              </Stack>
-            </Stack>
-          </Stack>
-        </Stack>
-      ),
-    },
+    // {
+    //   summaryTitle: "Attributes",
+    //   summarySubTitle: "Used for shipping and customs purposes.",
+    //   body: (
+    //     <Stack
+    //       //   maxWidth={{ lg: "90vw", md: "90vw", sm: "90vw", xs: "100vw" }}
+    //       alignItems={"center"}
+    //       width="-webkit-fill-available"
+    //     >
+    //       <Stack direction={"row"} justifyContent={"start"}>
+    //         <Stack maxWidth={"-webkit-fill-available"} spacing={3}>
+    //           <Stack maxWidth={"-webkit-fill-available"}></Stack>
+    //         </Stack>
+    //       </Stack>
+    //       <Stack maxWidth={"-webkit-fill-available"}>
+    //         <Stack
+    //           direction={"row"}
+    //           justifyContent={"space-around"}
+    //           flexWrap={"wrap"}
+    //           marginTop={"20px"}
+    //         >
+    //           <Stack justifyContent={"start"} spacing={1}>
+    //             {/* <Typography className="section_subtitle">
+    //             Used for shipping and customs purposes.
+    //           </Typography> */}
+    //             <Typography className="input_title">Dimensions</Typography>
+    //           </Stack>
+    //           <Stack
+    //             width={"-webkit-fill-available"}
+    //             maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
+    //             overflow={"hidden"}
+    //             direction={"row"}
+    //             margin={0}
+    //             justifyContent={"space-around"}
+    //             flexWrap={"wrap"}
+    //           >
+    //             <Stack
+    //               spacing={2}
+    //               padding={{ md: 3, sm: 2, xs: 0 }}
+    //               paddingX={{ md: "16px !important" }}
+    //               paddingBottom={{ md: "0px !important" }}
+    //               width={{ lg: "20%", md: "45%", xs: "100%" }}
+    //               minWidth={"200px"}
+    //             >
+    //               <Typography className="input_title">Width</Typography>
+    //               <NumberInput source="width" fullWidth variant="outlined" />
+    //             </Stack>
+    //             <Stack
+    //               spacing={2}
+    //               padding={{ md: 3, sm: 2, xs: 0 }}
+    //               paddingX={{ md: "16px !important" }}
+    //               paddingBottom={{ md: "0px !important" }}
+    //               width={{ lg: "20%", md: "45%", xs: "100%" }}
+    //               minWidth={"200px"}
+    //             >
+    //               <Typography className="input_title">Length</Typography>
+    //               <NumberInput source="length" fullWidth variant="outlined" />
+    //             </Stack>
+    //             <Stack
+    //               spacing={2}
+    //               padding={{ md: 3, sm: 2, xs: 0 }}
+    //               paddingX={{ md: "16px !important" }}
+    //               paddingBottom={{ md: "0px !important" }}
+    //               width={{ lg: "20%", md: "45%", xs: "100%" }}
+    //               minWidth={"200px"}
+    //             >
+    //               <Typography className="input_title">Height</Typography>
+    //               <NumberInput source="height" fullWidth variant="outlined" />
+    //             </Stack>
+    //             <Stack
+    //               spacing={2}
+    //               padding={{ md: 3, sm: 2, xs: 0 }}
+    //               paddingX={{ md: "16px !important" }}
+    //               paddingBottom={{ md: "0px !important" }}
+    //               width={{ lg: "20%", md: "45%", xs: "100%" }}
+    //               minWidth={"200px"}
+    //             >
+    //               <Typography className="input_title">Weight</Typography>
+    //               <NumberInput source="weight" fullWidth variant="outlined" />
+    //             </Stack>
+    //           </Stack>
+    //         </Stack>
+    //       </Stack>
+    //       <Stack maxWidth={"-webkit-fill-available"}>
+    //         <Stack direction="row" justifyContent={"start"}>
+    //           <Typography className="input_title">Customs</Typography>
+    //         </Stack>
+    //         <Stack
+    //           direction={"row"}
+    //           justifyContent={"space-around"}
+    //           flexWrap={"wrap"}
+    //           marginTop={"10px"}
+    //         >
+    //           <Stack
+    //             width={"-webkit-fill-available"}
+    //             maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
+    //             overflow={"hidden"}
+    //             direction={"row"}
+    //             margin={0}
+    //             justifyContent={"space-around"}
+    //             flexWrap={"wrap"}
+    //           >
+    //             <Stack
+    //               spacing={2}
+    //               padding={{ md: 3, sm: 2, xs: 0 }}
+    //               paddingX={{ md: "16px !important" }}
+    //               paddingBottom={{ md: "0px !important" }}
+    //               width={{ lg: "50%", md: "45%", xs: "100%" }}
+    //               minWidth={"250px"}
+    //             >
+    //               <Typography className="input_title">MID Code</Typography>
+    //               <NumberInput source="mid_code" fullWidth variant="outlined" />
+    //             </Stack>
+    //             <Stack
+    //               spacing={2}
+    //               padding={{ md: 3, sm: 2, xs: 0 }}
+    //               paddingX={{ md: "16px !important" }}
+    //               paddingBottom={{ md: "0px !important" }}
+    //               width={{ lg: "50%", md: "45%", xs: "100%" }}
+    //               minWidth={"250px"}
+    //             >
+    //               <Typography className="input_title">HS Code</Typography>
+    //               <NumberInput source="hs_code" fullWidth variant="outlined" />
+    //             </Stack>
+    //           </Stack>
+    //           <Stack
+    //             width={"-webkit-fill-available"}
+    //             maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
+    //             overflow={"hidden"}
+    //             direction={"row"}
+    //             margin={0}
+    //             // marginLeft={{lg: '15px', md: '20px'}}
+    //             justifyContent={"start"}
+    //             flexWrap={"wrap"}
+    //           >
+    //             <Stack
+    //               spacing={2}
+    //               padding={{ md: 3, sm: 2, xs: 0 }}
+    //               paddingX={{ md: "16px !important" }}
+    //               paddingBottom={{ md: "0px !important" }}
+    //               width={{ lg: "50%", md: "45%", xs: "100%" }}
+    //               minWidth={"250px"}
+    //             >
+    //               <Typography className="input_title">
+    //                 Country of origin
+    //               </Typography>
+    //               <NumberInput
+    //                 source="origin_country"
+    //                 fullWidth
+    //                 variant="outlined"
+    //               />
+    //             </Stack>
+    //           </Stack>
+    //         </Stack>
+    //       </Stack>
+    //     </Stack>
+    //   ),
+    // },
     {
       summaryTitle: "Thumbnail",
       summarySubTitle:
         "Used to represent your product during checkout, social sharing and more.",
       body: (
         <Stack
-          maxWidth={{ lg: "90vw", md: "80vw", sm: "75vw", xs: "70vw" }}
+          // maxWidth={{ lg: "90vw", md: "80vw", sm: "75vw", xs: "70vw" }}
           alignItems={"center"}
           justifyContent={"center"}
           width="-webkit-fill-available"
@@ -2097,7 +3382,7 @@ export default function ProductCreateComp(props) {
                 // maxWidth={{ md: "85%" }}
                 justifyContent={"center"}
                 alignItems={"center"}
-                width="80vw"
+                width={{ lg: "50vw", md: "45vw", sm: "80vw", xs: "80vw" }}
                 sx={{
                   "& .ra-input-pictures": {
                     display: "grid",
@@ -2131,14 +3416,13 @@ export default function ProductCreateComp(props) {
                 // maxWidth={{ md: "85%" }}
                 justifyContent={"center"}
                 alignItems={"center"}
-                width="80vw"
+                width={{ lg: "50vw", md: "45vw", sm: "80vw", xs: "80vw" }}
                 sx={{
                   "& .ra-input-pictures": {
                     display: "grid",
                   },
                 }}
               >
-                
                 <MediaPickerInput source="images" record={product} />
               </Stack>
             </Stack>
@@ -2149,42 +3433,43 @@ export default function ProductCreateComp(props) {
   ];
 
   return (
-    <SimpleForm
+    <TabbedForm
+      syncWithLocation={false}
+      tabs={
+        <TabbedFormTabs
+          variant="scrollable"
+          scrollButtons="auto"
+          onClick={(event) => {
+            setTabState(event.target.id);
+            // console.log(event.target.id, event.target.innerText);
+          }}
+        />
+      }
       defaultValues={{
         ...product,
-        options: product?.options.map((opt) => {
-          return {
-            ...opt,
-            variations: opt.values.map((o) => {
-              return o.value;
-            }),
-          };
-        }),
-        variants: product?.variants.map((vars) => {
-          return {
-            ...vars,
-            amount: vars?.prices?.filter((o) => {
-              return (
-                o.currency_code ===
-                identity?.data?.medusa_store?.default_currency_code
-              );
-            })[0]?.amount,
-            currency: identity?.data?.medusa_store?.default_currency_code,
-          };
-        }),
+        options: product?.options.map((opt) => ({
+          ...opt,
+          variations: opt.values.map((o) => o.value),
+        })),
+        variants: product?.variants.map((vars) => ({
+          ...vars,
+          amount: vars?.prices?.filter(
+            (o) =>
+              o.currency_code ===
+              identity?.data?.medusa_store?.default_currency_code
+          )[0]?.amount,
+          currency: identity?.data?.medusa_store?.default_currency_code,
+        })),
+        images: product?.images.map((img) => img.url),
+        bulk_product_upload: products,
       }}
-      toolbar={<SaveToolbar type={type} product={product} />}
+      toolbar={<SaveToolbar type={type} product={product} tabState={tabState} />}
       sx={{
         backgroundColor: `${theme && theme === "dark" ? "#222" : "#fff"}`,
-        // "& .MuiCard-root": {
-        //   backgroundColor: `${theme && theme === "dark" ? "#222" : "#fff"}`,
-        // },
         fontFamily: "Rubik !important",
         "& .MuiTypography-root, p, span": {
           fontFamily: "Rubik !important",
-          //   fontSize: "13px !important",
         },
-
         "& .section_subtitle": {
           color: `${theme && theme === "dark" ? "#8D9498" : "#6b7280"}`,
           fontSize: "14px !important",
@@ -2193,19 +3478,56 @@ export default function ProductCreateComp(props) {
           fontWeight: "500",
           fontSize: "14px !important",
         },
+        "& .MuiToolbar-root, .RaShow-card": {
+          backgroundColor: "transparent",
+          boxShadow: "none",
+        },
       }}
     >
-      {createSections.map((createSection, index) => {
-        return (
-          <CreateAccordions
-            createSection={createSection}
-            index={index}
-            key={index}
-            handleChange={handleChange}
-            expanded={expanded}
-          />
-        );
-      })}
-    </SimpleForm>
+      <TabbedForm.Tab label="single" path="single">
+        <SingleProductForm
+          product={product}
+          type={type}
+          theme={theme}
+          createSections={createSections}
+          expanded={expanded}
+          handleChange={handleChange}
+          currncy={currncy}
+          setForm={setForm}
+          identity={identity}
+        />
+      </TabbedForm.Tab>
+      <TabbedForm.Tab label="bulk" path="bulk">
+        <ArrayInput
+          source="bulk_product_upload"
+          label="Bulk Product Upload"
+          helperText="Click the + sign to add a new product"
+          sx={{
+            "& .RaSimpleFormIterator-line": {
+              marginBottom: "20px !important",
+              borderBottom: "none",
+            },
+          }}
+        >
+          <SimpleFormIterator
+            fullWidth
+            inline
+            sx={{ gap: "10px", "& .RaSimpleFormIterator-form": {} }}
+          >
+            <FormDataConsumer>
+              {({ scopedFormData, formData, getSource }) => (
+                <BulkSingleProductInput
+                  scopedFormData={scopedFormData}
+                  getSource={getSource}
+                  formData={formData}
+                  currncy={currncy}
+                  setForm={setForm}
+                />
+              )}
+            </FormDataConsumer>
+          </SimpleFormIterator>
+        </ArrayInput>
+      </TabbedForm.Tab>
+    </TabbedForm>
   );
 }

@@ -34,8 +34,19 @@ import {
   useGetMany,
   useGetList,
   useTranslate,
+  SelectInput,
+  FunctionField,
+  BooleanInput,
 } from "react-admin";
-import { MoreVert, MoreHoriz } from "@mui/icons-material";
+import {
+  MoreVert,
+  MoreHoriz,
+  ShoppingCart,
+  SendTimeExtension,
+  Add,
+  Edit,
+  OpenInFull,
+} from "@mui/icons-material";
 import { useMediaQuery, Fab } from "@mui/material";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useParentSize } from "@cutting/use-get-parent-size";
@@ -59,7 +70,18 @@ import { toTitleCase } from "../../helpers/helpers";
 import OrderAsideComp from "./OrderAsideComp";
 import Medusa from "@medusajs/medusa-js";
 import { JsonField, JsonInput } from "react-admin-json-view";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 import { createClient } from "@supabase/supabase-js";
+import {
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+} from "../products/ProductCreateComp";
+import { ToastContainer, toast } from "react-toastify";
 // Replace 'YOUR_SUPABASE_URL' and 'YOUR_SUPABASE_KEY' with your Supabase URL and key
 const supabase = createClient(
   import.meta.env.VITE_BASE_URL,
@@ -235,8 +257,11 @@ function formatPrice(price) {
   return parseFloat(price / 100).toFixed(2);
 }
 const DetailsListHoriz = (props) => {
-  const { fields, title } = props;
-  const record = useRecordContext();
+  let { fields, title, record } = props;
+  if (!record) {
+    record = useRecordContext();
+  }
+  if (!record) return null;
   return (
     <Stack style={{ marginY: "32px !important" }} margin spacing={1}>
       <Stack
@@ -639,9 +664,538 @@ export const PaymentSummary = (props) => {
   );
 };
 
+const CreateAccordions = (props) => {
+  const { createSection, index, expanded, handleChange } = props;
+  const [theme, setTheme] = useTheme();
+
+  return (
+    <Accordion
+      expanded={expanded === `panel${index}`}
+      onChange={handleChange(`panel${index}`)}
+    >
+      <AccordionSummary
+        aria-controls={`panel${index}d-content`}
+        id={`panel${index}d-header`}
+        theme={theme}
+      >
+        <Typography>{createSection?.summaryTitle}</Typography>
+        <Typography className="section_subtitle">
+          {createSection?.summarySubTitle}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails theme={theme}>{createSection?.body}</AccordionDetails>
+    </Accordion>
+  );
+};
+
 export const FulfilmentSummary = (props) => {
-  const { currncy, record, order } = props;
+  const { currncy, record, order, medusa } = props;
   const translate = useTranslate();
+  const fullScreen = useMediaQuery((theme) => theme.breakpoints.down("sm"));
+  const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useTheme();
+  const [inner_expanded, setInnerExpanded] = useState(false);
+  // Using Supabase client to fetch pickup_requests for the current order
+  const [pickupData, setPickupData] = useState([]);
+  const [pickupTotal, setPickupTotal] = useState(0);
+  const [pickupPending, setPickupPending] = useState(false);
+  const [pickupError, setPickupError] = useState(null);
+  const redirect = useRedirect();
+  const [logisticOrg, setLogisticOrg] = useState(null);
+  const { data: identity } = useGetIdentity();
+  const _fufillment_details_list = [
+    {
+      name: "Fulfillment ID:",
+      comp: (
+        <>
+          {order && order.fulfillments && order.fulfillments.length > 0 ? (
+            <Stack
+              marginTop={1}
+              sx={{
+                fontSize: { md: "15px", sm: "14px", xs: "13px" },
+                "& p": {
+                  fontSize: { md: "15px", sm: "14px", xs: "14px" },
+                },
+                // fontWeight: "500",
+                // color: "#8d9498",
+              }}
+            >
+              <Typography>{order.fulfillments[0].id}</Typography>
+            </Stack>
+          ) : (
+            <Typography>No Fulfillment details available.</Typography>
+          )}
+        </>
+      ),
+    },
+    {
+      name: "Pickup Status",
+      comp: (
+        <>
+          {order && order.fulfillments && order.fulfillments.length > 0 ? (
+            <Stack
+              marginTop={1}
+              sx={{
+                fontSize: { md: "15px", sm: "14px", xs: "13px" },
+                "& p": {
+                  fontSize: { md: "15px", sm: "14px", xs: "14px" },
+                },
+                // fontWeight: "500",
+                // color: "#8d9498",
+              }}
+            >
+              <Typography>
+                {pickupData &&
+                pickupData.order_ids &&
+                pickupData.order_ids.includes(order.id) &&
+                !pickupData.processed
+                  ? "Picked up"
+                  : "Not Picked up"}
+              </Typography>
+            </Stack>
+          ) : (
+            <Typography>Pickup Status unavailable.</Typography>
+          )}
+        </>
+      ),
+    },
+
+    {
+      name: "Status",
+      comp: (
+        <>
+          {order && order.fulfillments && order.fulfillments.length > 0 ? (
+            <Stack
+              marginTop={1}
+              sx={{
+                fontSize: { md: "15px", sm: "14px", xs: "13px" },
+                "& p": {
+                  fontSize: { md: "15px", sm: "14px", xs: "14px" },
+                },
+                // fontWeight: "500",
+                // color: "#8d9498",
+              }}
+            >
+              <Typography>
+                {order.fulfillments[0].shipped_at
+                  ? new Date(order.fulfillments[0].shipped_at).toLocaleString()
+                  : "Not shipped"}
+              </Typography>
+            </Stack>
+          ) : (
+            <Typography>No Fulfillment details available.</Typography>
+          )}
+        </>
+      ),
+    },
+  ];
+
+  useEffect(() => {
+    async function fetchLogisticOrg() {
+      if (
+        order &&
+        order.shipping_methods &&
+        order.shipping_methods.length > 0
+      ) {
+        // Assumes the first shipping method contains the shipping option
+        const shippingOptionId =
+          order.shipping_methods[0].shipping_option.provider_id;
+        const { data, error } = await supabase
+          .from("logistics_org_regions")
+          .select("*")
+          .eq("fulfillment_provider", shippingOptionId)
+          .maybeSingle();
+        if (error) {
+          console.error("Error fetching logistic organization:", error);
+        } else {
+          setLogisticOrg(data);
+          // console.log("Fetched logistic organization:", data);
+        }
+      }
+    }
+    fetchLogisticOrg();
+  }, [order]);
+
+  useEffect(() => {
+    async function fetchPickupRequest() {
+      setPickupPending(true);
+      let pickupRequestData = null;
+      let total = 0;
+
+      // First, try to fetch a pickup_request containing the current order id
+      const { data, error, count } = await supabase
+        .from("pickup_requests")
+        .select()
+        .filter("order_ids", "cs", `{${order.id}}`)
+        .maybeSingle();
+
+      if (error) {
+        setPickupError(error);
+      } else if (data) {
+        pickupRequestData = data;
+        total = count || 1;
+      }
+
+      // If not found and additional criteria are available, fetch an available pickup_request
+      if (!pickupRequestData && order && logisticOrg && identity) {
+        const vendorId = identity.medusa_user.id;
+        const { data: availableData, error: availableError } = await supabase
+          .from("pickup_requests")
+          .select("*")
+          .match({
+            vendor_id: vendorId,
+            region_id: order.region_id,
+            logistics_org_id: logisticOrg.logistics_org_id,
+            processed: false,
+          });
+        if (availableError) {
+          setPickupError(availableError);
+        } else if (availableData && availableData.length > 0) {
+          pickupRequestData = availableData[0];
+          total = availableData.length;
+        }
+      }
+
+      setPickupData(pickupRequestData);
+      setPickupTotal(total);
+      setPickupPending(false);
+    }
+    if (order && order.id) {
+      fetchPickupRequest();
+    }
+  }, [order, logisticOrg, identity]);
+
+  useEffect(() => {
+    if (pickupData) console.log(pickupData);
+  }, [pickupData]);
+
+  const createVariantSections = [
+    {
+      summaryTitle: "Fulfillment Configuration",
+      summarySubTitle: "Manage fulfillment configs for this order.",
+      body: (
+        <Stack maxWidth={"-webkit-fill-available"}>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            flexWrap={"wrap"}
+            marginTop={"10px"}
+          >
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              margin={0}
+              justifyContent={"space-around"}
+              flexWrap={"wrap"}
+            >
+              {order &&
+              order?.fulfillments &&
+              order?.fulfillments.length > 0 ? (
+                <Stack
+                  className="stat-card"
+                  paddingY={2}
+                  paddingX={2}
+                  overflow={"auto"}
+                  width={"100%"}
+                  direction={"row"}
+                  borderRadius={2}
+                  border={"2px solid rgba(228, 228, 231, 1)"}
+                  spacing={1}
+                  justifyContent={"space-between"}
+                  // onClick={() => {
+                  //   redirect("show", "region", id);
+                  // }}
+                >
+                  <Stack direction={"row"} spacing={2}>
+                    <Stack
+                      justifyContent={"center"}
+                      alignItems={"center"}
+                      backgroundColor={"rgba(243, 244, 246, 1)"}
+                      paddingX={1}
+                      borderRadius={2}
+                    >
+                      <SendTimeExtension
+                        sx={{
+                          color: "rgba(107, 114, 128, 1)",
+                        }}
+                      />
+                    </Stack>
+                    <Stack justifyContent={"center"} alignItems={"stretch"}>
+                      <Typography
+                        sx={{
+                          fontSize: { md: "17px", sm: "15px", xs: "13px" },
+                          fontWeight: "600",
+                          // textTransform: "capitalize",
+                        }}
+                      >
+                        Fulfillment -
+                        {` #${order?.fulfillments[0]?.id
+                          .split("_")[1]
+                          .slice(-12)}`}
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          fontSize: { md: "14px", sm: "13px", xs: "12px" },
+                          color: "#8d9498",
+                        }}
+                      >
+                        {`Status: ${order?.fulfillment_status} - ${
+                          order?.fulfillments[0]?.shipped_at
+                            ? "Shipped"
+                            : "Not shipped"
+                        } `}
+                        {/* {!isLarge ? `` : null} */}
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                  <span>
+                    <Button sx={{ minWidth: "fit-content" }} onClick={() => {}}>
+                      <MoreVert fontSize="medium" />
+                    </Button>
+                  </span>
+                </Stack>
+              ) : (
+                <Button
+                  sx={{
+                    minWidth: "fit-content",
+                    alignItems: "center",
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                  onClick={() => {
+                    medusa.admin.orders
+                      .createFulfillment(order.id, {
+                        items: order.items.map((item) => {
+                          return { item_id: item.id, quantity: item.quantity };
+                        }),
+                      })
+                      .then(({ order }) => {
+                        console.log(
+                          order.fulfillment_status,
+                          order.fulfillments
+                        );
+                      });
+                  }}
+                >
+                  Create Fulfillment
+                  <Add fontSize="medium" />
+                </Button>
+              )}
+            </Stack>
+          </Stack>
+        </Stack>
+      ),
+    },
+    {
+      summaryTitle: "Pickup Requests",
+      summarySubTitle: "Manage pickup requests for this order.",
+      body: (
+        <Stack maxWidth={"-webkit-fill-available"}>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            flexWrap={"wrap"}
+            marginTop={"10px"}
+          >
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              margin={0}
+              justifyContent={"space-around"}
+              flexWrap={"wrap"}
+            >
+              {order &&
+              order?.fulfillments &&
+              pickupData &&
+              !pickupPending &&
+              logisticOrg &&
+              order?.fulfillments.length > 0 ? (
+                <Stack
+                  className="stat-card"
+                  paddingY={2}
+                  paddingX={2}
+                  overflow={"auto"}
+                  width={"100%"}
+                  direction={"row"}
+                  borderRadius={2}
+                  border={"2px solid rgba(228, 228, 231, 1)"}
+                  spacing={1}
+                  justifyContent={"space-between"}
+                  // onClick={() => {
+                  //   redirect("show", "region", id);
+                  // }}
+                >
+                  <Stack direction={"row"} spacing={2}>
+                    <Stack
+                      justifyContent={"center"}
+                      alignItems={"center"}
+                      backgroundColor={"rgba(243, 244, 246, 1)"}
+                      paddingX={1}
+                      borderRadius={2}
+                    >
+                      <SendTimeExtension
+                        sx={{
+                          color: "rgba(107, 114, 128, 1)",
+                        }}
+                      />
+                    </Stack>
+                    <Stack justifyContent={"center"} alignItems={"stretch"}>
+                      <Typography
+                        sx={{
+                          fontSize: { md: "17px", sm: "15px", xs: "13px" },
+                          fontWeight: "600",
+                          // textTransform: "capitalize",
+                        }}
+                      >
+                        Pickup Request -{` #${pickupData.id}`}
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          fontSize: { md: "14px", sm: "13px", xs: "12px" },
+                          color: "#8d9498",
+                        }}
+                      >
+                        {`Status: ${pickupData.status} - ${
+                          pickupData.processed ? "Processed" : "Not processed"
+                        } `}
+                        {/* {!isLarge ? `` : null} */}
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                  <span>
+                    <Button
+                      sx={{ minWidth: "fit-content" }}
+                      onClick={() => {
+                        if (pickupData.order_ids.includes(order.id)) {
+                          redirect(
+                            "show",
+                            "pickup_requests",
+                            pickupData.id,
+                            {},
+                            { focus: { section: "orders" } }
+                          );
+                        } else {
+                          (async () => {
+                            const { data, error } = await supabase
+                              .from("pickup_requests")
+                              .update({
+                                region_id: order.region_id,
+                                vendor_id: identity?.medusa_user.id,
+                                logistics_org_id: logisticOrg?.logistics_org_id,
+                                order_ids: [...pickupData.order_ids, order.id],
+                                status: "pending",
+                                processed: false,
+                              })
+                              .eq("id", pickupData?.id)
+                              .select();
+                            if (error) {
+                              console.error(
+                                "Error creating pickup request:",
+                                error
+                              );
+                            } else {
+                              console.log("Pickup request created:", data);
+                              toast("Pickup request updated successfully", {
+                                type: "success",
+                              });
+                            }
+                          })();
+                        }
+                      }}
+                    >
+                      {pickupData.order_ids.includes(order.id) ? (
+                        <OpenInFull fontSize="medium" />
+                      ) : (
+                        <Add fontSize="medium" />
+                      )}
+                    </Button>
+                  </span>
+                </Stack>
+              ) : (
+                <Button
+                  sx={{
+                    minWidth: "fit-content",
+                    alignItems: "center",
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                  onClick={() => {
+                    (async () => {
+                      const { data, error } = await supabase
+                        .from("pickup_requests")
+                        .insert({
+                          region_id: order?.region_id,
+                          vendor_id: identity?.medusa_user.id,
+                          logistics_org_id: logisticOrg?.logistics_org_id,
+                          order_ids: [order.id],
+                          status: "pending",
+                          processed: false,
+                        });
+                      if (error) {
+                        console.error("Error creating pickup request:", error);
+                      } else {
+                        console.log("Pickup request created:", data);
+                      }
+                    })();
+                  }}
+                >
+                  Create Pickup Request
+                  <Add fontSize="medium" />
+                </Button>
+              )}
+              {pickupData &&
+                pickupData.order_ids &&
+                !pickupData.order_ids.includes(order.id) && (
+                  <Typography
+                    sx={{
+                      fontSize: { md: "15px", sm: "14px", xs: "14px" },
+                      color: "#8d9498",
+                    }}
+                  >
+                    Click the + sign to add this fulfillment to this pickup
+                    request
+                  </Typography>
+                )}
+            </Stack>
+          </Stack>
+        </Stack>
+      ),
+    },
+    {
+      summaryTitle: "Deliveries",
+      summarySubTitle: "Manage deliveries for this order.",
+      body: (
+        <Stack maxWidth={"-webkit-fill-available"}>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            flexWrap={"wrap"}
+            marginTop={"10px"}
+          >
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              margin={0}
+              justifyContent={"space-around"}
+              flexWrap={"wrap"}
+            ></Stack>
+          </Stack>
+        </Stack>
+      ),
+    },
+  ];
+  const handleInnerChange = (panel) => (event, isExpanded) => {
+    setInnerExpanded(isExpanded ? panel : false);
+  };
+
   return (
     <Stack
       className="card"
@@ -665,6 +1219,92 @@ export const FulfilmentSummary = (props) => {
 
         <Stack direction={"row"} spacing={{ md: 2, sm: 1, xs: 1 }}>
           <StatusField source="fulfillment_status" />
+          <Dialog
+            open={open}
+            onClose={() => {
+              setOpen(false);
+            }}
+            scroll={"paper"}
+            aria-labelledby="scroll-dialog-title"
+            aria-describedby="scroll-dialog-description"
+            fullScreen={fullScreen}
+            fullWidth={true}
+          >
+            <DialogTitle
+              id="scroll-dialog-title"
+              sx={{
+                color: `${
+                  theme && theme === "dark" ? "#8D9498" : "rgba(0, 0, 0, .87)"
+                }`,
+
+                fontFamily: "Rubik !important",
+                fontWeight: "500",
+                fontSize: { sm: "20px", md: "20px", xs: "18px" },
+              }}
+            >{` Fulfilment Manager `}</DialogTitle>
+            <DialogContent dividers={"paper"}>
+              <DialogContentText
+                id="scroll-dialog-description"
+                // ref={descriptionElementRef}
+                tabIndex={-1}
+                sx={{
+                  backgroundColor: `${
+                    theme && theme === "dark" ? "#222" : "#fff"
+                  }`,
+                  // "& .MuiCard-root": {
+                  //   backgroundColor: `${theme && theme === "dark" ? "#222" : "#fff"}`,
+                  // },
+                  fontFamily: "Rubik !important",
+                  "& .MuiTypography-root, p, span": {
+                    fontFamily: "Rubik !important",
+                    //   fontSize: "13px !important",
+                  },
+
+                  "& .section_subtitle": {
+                    color: `${
+                      theme && theme === "dark" ? "#8D9498" : "#6b7280"
+                    }`,
+                    fontSize: "14px !important",
+                  },
+                  "& .input_title": {
+                    fontWeight: "500",
+                    fontSize: "14px !important",
+                  },
+                }}
+              >
+                {createVariantSections.map((createSection, index) => {
+                  return (
+                    <CreateAccordions
+                      createSection={createSection}
+                      index={index}
+                      key={index}
+                      expanded={inner_expanded}
+                      handleChange={handleInnerChange}
+                    />
+                  );
+                })}
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => {
+                  setOpen(false);
+                  // setValue(getSource("variant_open"), false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setOpen(false);
+                  // setValue(getSource("variant_open"), false);
+                  // console.log(form);
+                }}
+              >
+                Save and Close
+              </Button>
+            </DialogActions>
+          </Dialog>
           <Button
             variant="outlined"
             type="button"
@@ -678,7 +1318,9 @@ export const FulfilmentSummary = (props) => {
               textTransform: "capitalize",
               border: "1px solid rgba(229, 231, 235, 1)",
             }}
-            onClick={(e) => {}}
+            onClick={(e) => {
+              setOpen(true);
+            }}
           >
             {/* {loading && <CircularProgress size={25} thickness={2} />} */}
             {translate("Create Fulfillment")}
@@ -728,7 +1370,7 @@ export const FulfilmentSummary = (props) => {
             );
           })}
       </Stack>
-      <Stack
+      {/* <Stack
         padding={2}
         overflow={"auto"}
         width={"100%"}
@@ -743,7 +1385,10 @@ export const FulfilmentSummary = (props) => {
         {order && order.fulfillments && (
           <ReactJson src={order["fulfillments"]} />
         )}
-      </Stack>
+      </Stack> */}
+      {order && order.fulfillments && (
+        <DetailsListHoriz fields={_fufillment_details_list} />
+      )}
     </Stack>
   );
 };
@@ -1327,7 +1972,12 @@ export default function OrderShowComp(props) {
 
         <PaymentSummary order={order} currncy={currncy} record={record} />
 
-        <FulfilmentSummary order={order} currncy={currncy} record={record} />
+        <FulfilmentSummary
+          order={order}
+          currncy={currncy}
+          record={record}
+          medusa={medusa}
+        />
 
         <CustomerSummary order={order} currncy={currncy} record={record} />
 

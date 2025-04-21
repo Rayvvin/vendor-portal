@@ -31,7 +31,6 @@ import PickupRequestsAsideComp from "./PickupRequestsAsideComp";
 import Medusa from "@medusajs/medusa-js";
 import PickupRequestsShowComp from "./PickupRequestsShowComp";
 
-
 const cardActionStyle = {
   // zIndex: 2,
   // display: 'inline-block',
@@ -59,7 +58,8 @@ const RecordField = ({ field, basePath }) => {
         {record[field]}
         ...
       </Button>
-      {/* <Button color="primary" onClick={()=> redirect('/update-account')}>
+      <EditButton basePath={basePath} />
+      {/* <Button color="primary" onClick={() => redirect(basePath)}>
         <Edit />
       </Button> */}
     </>

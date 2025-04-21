@@ -1412,7 +1412,7 @@ export default function RegionCreateComp(props) {
               minWidth={"200px"}
             >
               <Typography className="input_title">Default Tax Code</Typography>
-              <NumberInput fullWidth variant="outlined" source="tax_code" />
+              <TextInput fullWidth variant="outlined" source="tax_code" />
             </Stack>
           </Stack>
           <Stack

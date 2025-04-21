@@ -175,7 +175,7 @@ const ListActions = () => {
     },
     {
       title: "Total Sales",
-      value: "$0",
+      value: "£0",
       percentage: "-14%",
       icon: (
         <TrendingDown sx={{ color: "var(--imperial-red)" }} fontSize="small" />
@@ -357,6 +357,11 @@ export const OrderList = () => {
       title={" "}
       // filter={user.role && user.role === "user" ? { email: user.email } : null}
       // aside={<Aside quickLinks={quickLinks} />}
+      filter={
+        identity && identity.data && identity.data?.medusa_store
+          ? { store_id: identity?.data?.medusa_store?.id }
+          : null
+      }
       empty={false}
       sort={{ field: "updated_at", order: "DESC" }}
       sx={{

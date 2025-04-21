@@ -166,21 +166,24 @@ const Footer = ({
 
   async function generateTerm(email, userType) {
     try {
-      const response = await fetch("https://qqhnbezrwcbdyidfudcs.supabase.co/functions/v1/generate-terms-pdf", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_ANON_KEY}`, // Ensure this is securely stored
-        },
-        body: JSON.stringify({ email, userType }),
-      });
-  
+      const response = await fetch(
+        "https://qqhnbezrwcbdyidfudcs.supabase.co/functions/v1/generate-terms-pdf",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_ANON_KEY}`, // Ensure this is securely stored
+          },
+          body: JSON.stringify({ email, userType }),
+        }
+      );
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         throw new Error(data.error || "Failed to generate terms");
       }
-  
+
       return data;
     } catch (error) {
       console.error("Error generating terms:", error.message);
@@ -216,6 +219,7 @@ const Footer = ({
                   toast.warn("Both passwords have to match");
                 }
               } else {
+                // generateTerm(auth.email, 'user');
                 hndlSbmtRef.current({
                   auth,
                   state_obj,
@@ -226,6 +230,7 @@ const Footer = ({
                   setLoading,
                   mode,
                   setMode,
+                  generateTerm,
                 });
               }
             }}
@@ -789,6 +794,7 @@ const SignUpWizardForm = ({ hndlSbmtRef, mode, setMode }) => {
     country_obj,
     mode,
     setMode,
+    generateTerm,
   }) => {
     console.log("Creating Account");
     const { data, error } = await supabase.auth.signUp({
@@ -856,9 +862,11 @@ const SignUpWizardForm = ({ hndlSbmtRef, mode, setMode }) => {
                     password: auth.password,
                   })
                   .then(({ user }) => {
-                    generateTerm(auth.email, "user")
-    .then((result) => console.log("Response:", result))
-    .catch((error) => console.error("Request failed:", error)); 
+                    // generateTerm(auth.email, "user")
+                    //   .then((result) => console.log("Response:", result))
+                    //   .catch((error) =>
+                    //     console.error("Request failed:", error)
+                    //   );
                     toast.success("User Account Created");
                     setMode("login");
                   });

@@ -124,7 +124,7 @@ const theme = {
           // background: 'linear-gradient(to bottom right, #610212, #E0455F)',
           color: "var(--white)",
           "&:hover": {
-            background: "hsl(357, 86%, 57%)",
+            // background: "hsl(357, 86%, 57%)",
             // background: 'linear-gradient(to bottom right, #610212, #E0455F)',
             color: "var(--white)",
           },
@@ -136,8 +136,8 @@ const theme = {
         root: {
           paddingBottom: "0px !important",
           "& .Mui-selected": {
-            background: "#E0455F !important",
-            color: "var(--white) !important",
+            background: "white !important",
+            color: "#3D8B7A !important",
           },
         },
       },

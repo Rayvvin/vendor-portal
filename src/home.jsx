@@ -291,7 +291,7 @@ function Home() {
     },
     {
       title: "Monthly Revenue",
-      value: "$50000",
+      value: "£500",
       percentage: "-5%",
       icon: (
         <TrendingDown sx={{ color: "var(--imperial-red)" }} fontSize="small" />

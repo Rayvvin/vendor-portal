@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import LockIcon from "@mui/icons-material/Lock";
 import Box from "@mui/material/Box";
 import {
@@ -55,6 +56,10 @@ const Step = ({
   setUser,
   cred,
   setCred,
+  expectedOtp,
+  setExpectedOtp,
+  otpCooldown, 
+  setOtpCooldown
 }) => {
   const {
     isLoading,
@@ -69,7 +74,7 @@ const Step = ({
   } = useWizard();
   // const notify = useNotify();
   // const notify = toast;
-
+  
   const data = useWatch();
   //   useEffect(()=>{
   //     console.log(activeStep)
@@ -91,6 +96,36 @@ const Step = ({
     if (!error) {
       toast.success(`OTP/Verification Link has been resent to ${cred.email}`);
     }
+  };
+
+  const sendOTP = async ({ data: datax, number }) => {
+    console.log(otpCooldown);
+    if (otpCooldown > 0) {
+      toast.warn(
+        `Please wait ${otpCooldown} seconds before requesting a new OTP.`
+      );
+      return;
+    }
+    fetch(`http://localhost:3000/?number=${datax.phone}&subject=AFRIOMARKET`)
+      .then((res) => res.json())
+      .then((data) => {
+        setExpectedOtp(data.OTP);
+        setOtpCooldown(30);
+        console.log("OTP sent:", data.OTP);
+        toast.info(`OTP sent to ${datax.phone}`);
+        const timer = setInterval(() => {
+          setOtpCooldown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      })
+      .catch((err) => {
+        console.error("Error sending OTP:", err);
+      });
   };
 
   const checkValid = async ({ data, number }) => {
@@ -191,18 +226,19 @@ const Step = ({
     }
 
     switch (number) {
-      // case 0:
-      //   let emailvrfy = await checkVerifiedEmail();
-      //   if (emailvrfy) {
-      //     nextStep();
-      //   }
-
-      //   break;
       case 0:
+        console.log("Checking email", user);
+        if (user && user.email_confirmed_at) {
+          nextStep();
+        }
+
+        break;
+      case 1:
         if (errors.phone) {
           // notify(errors.email, { type: "warning" });
           toast.warn(errors.phone);
         } else {
+          sendOTP({ data: data, number });
           nextStep();
         }
 
@@ -265,64 +301,154 @@ const Step = ({
           <ChevronLeftIcon />
         </Button>
         <Stack direction={"row"} margin={0} padding={0} spacing={2}>
-          {isLastStep && (
-            <Button
-              variant="contained"
-              type="button"
-              // type="submit"
-              color="primary"
-              disabled={
-                activeStep === stepCount - 1
-                  ? !isFirstStep
-                    ? true
-                    : false
-                  : null
-              }
-              style={{
-                padding: "5px 10px",
-                height: "38px",
-                fontSize: "12px",
-              }}
-              onClick={() => {
-                console.log(data);
-                resendOTP({ data: data, number: activeStep });
+          {activeStep === 0 ? (
+            <>
+              {user && !user.email_confirmed_at && (
+                <>
+                  <Button
+                    variant="contained"
+                    type="button"
+                    // type="submit"
+                    color="primary"
+                    disabled={
+                      activeStep === stepCount - 1
+                        ? !isFirstStep
+                          ? true
+                          : false
+                        : null
+                    }
+                    style={{
+                      padding: "5px 10px",
+                      height: "38px",
+                      fontSize: "12px",
+                    }}
+                    onClick={() => {
+                      // console.log(data);
+                      resendOTP({ data: data, number: activeStep });
 
-                // submitRef();
-                // console.log(email(data.email))
-                // nextStep();
-              }}
-            >
-              Resend OTP
-            </Button>
+                      // submitRef();
+                      // console.log(email(data.email))
+                      // nextStep();
+                    }}
+                  >
+                    Resend Email
+                  </Button>{" "}
+                  <Button
+                    variant="contained"
+                    type="button"
+                    // type="submit"
+                    color="primary"
+                    disabled={
+                      activeStep === stepCount - 1
+                        ? !isFirstStep
+                          ? true
+                          : false
+                        : null
+                    }
+                    style={{
+                      padding: "5px 10px",
+                      height: "38px",
+                      fontSize: "12px",
+                    }}
+                    onClick={() => {
+                      // console.log(data);
+                      checkValid({ data: data, number: activeStep });
+
+                      // submitRef();
+                      // console.log(email(data.email))
+                      // nextStep();
+                    }}
+                  >
+                    <RestartAltIcon />
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="contained"
+                type="button"
+                // type="submit"
+                color="primary"
+                disabled={
+                  activeStep === stepCount - 1
+                    ? !isFirstStep
+                      ? true
+                      : false
+                    : null
+                }
+                style={{
+                  padding: "5px 10px",
+                  height: "38px",
+                  fontSize: "12px",
+                }}
+                onClick={() => {
+                  // console.log(data);
+                  checkValid({ data: data, number: activeStep });
+
+                  // submitRef();
+                  // console.log(email(data.email))
+                  // nextStep();
+                }}
+              >
+                <ChevronRightIcon />
+              </Button>
+            </>
+          ) : (
+            <>
+              {isLastStep && (
+                <Button
+                  variant="contained"
+                  type="button"
+                  color="primary"
+                  disabled={
+                    otpCooldown > 0 
+                    // ||
+                    // (activeStep == stepCount - 1 ? false : true)
+                  }
+                  style={{
+                    padding: "5px 10px",
+                    height: "38px",
+                    fontSize: "12px",
+                  }}
+                  onClick={() => {
+                    console.log(data);
+                    sendOTP({ data: data, number: activeStep });
+                  }}
+                >
+                  {otpCooldown > 0
+                    ? `Resend OTP (${otpCooldown}s)`
+                    : "Resend OTP"}
+                </Button>
+              )}
+              <Button
+                variant="contained"
+                type="button"
+                // type="submit"
+                color="primary"
+                disabled={
+                  activeStep === stepCount - 1
+                    ? !isFirstStep
+                      ? true
+                      : false
+                    : null
+                }
+                style={{
+                  padding: "5px 10px",
+                  height: "38px",
+                  fontSize: "12px",
+                }}
+                onClick={() => {
+                  console.log(data);
+                  checkValid({ data: data, number: activeStep });
+
+                  // submitRef();
+                  // console.log(email(data.email))
+                  // nextStep();
+                }}
+              >
+                <ChevronRightIcon />
+              </Button>
+            </>
           )}
-          <Button
-            variant="contained"
-            type="button"
-            // type="submit"
-            color="primary"
-            disabled={
-              activeStep === stepCount - 1
-                ? !isFirstStep
-                  ? true
-                  : false
-                : null
-            }
-            style={{
-              padding: "5px 10px",
-              height: "38px",
-              fontSize: "12px",
-            }}
-            onClick={() => {
-              console.log(data);
-              checkValid({ data: data, number: activeStep });
-
-              // submitRef();
-              // console.log(email(data.email))
-              // nextStep();
-            }}
-          >
-            <ChevronRightIcon />
-          </Button>
         </Stack>
       </Stack>
       <ToastContainer

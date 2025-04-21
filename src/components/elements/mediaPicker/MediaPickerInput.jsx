@@ -31,19 +31,21 @@ import UploadButton from "./UploadButton";
 import theme from "../../../theme/Theme";
 import CenteredTab from "../../tabs/centeredTab";
 import Medusa from "@medusajs/medusa-js";
-import { useWatch } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import { toast } from "react-toastify";
 import { Close } from "@mui/icons-material";
 
 const MediaPickerInput = (props) => {
   const fullScreen = useMediaQuery((theme) => theme.breakpoints.down("sm"));
-  const { type, record, source } = props;
+  const { type, record, source, upload_source, getSource } = props;
   const [inputType, setInputType] = useState(type ? type : "multi");
   const {
     field: { onChange, value, name },
   } = useInput(props);
   const [selectedImages, setSelectedImages] = useState(value);
   const [tabState, setTabState] = useState(null);
+  const form = useWatch();
+  const { setValue } = useFormContext();
 
   const [open, setOpen] = useState(false);
   const [firstLoad, setFirstLoad] = useState(true);
@@ -57,7 +59,7 @@ const MediaPickerInput = (props) => {
   };
 
   const SaveToolbar = (props) => {
-    const { type, product } = props;
+    const { type, product, setValue } = props;
     const [theme, setTheme] = useTheme();
     const translate = useTranslate();
     const isLarge = useMediaQuery((theme) => theme.breakpoints.down("lg"));
@@ -71,7 +73,6 @@ const MediaPickerInput = (props) => {
       apiKey: identity?.data?.medusa_user?.api_token,
     });
 
-    const form = useWatch();
     const redirect = useRedirect();
 
     const handleSubmitWithImage = async (data) => {
@@ -79,21 +80,23 @@ const MediaPickerInput = (props) => {
         toast.warning(`You need at least 1 image file to initiate upload`);
         return;
       }
-
-      // console.log(data.image_upload);
-      toast.promise(
+      await toast.promise(
         medusa.admin.uploads
           .create(data.image_upload.map((img) => img.rawFile))
           .then(({ uploads }) => {
             if (uploads.length) {
-              medusa.admin.products.update(record?.id, {
-                images: uploads.length
-                  ? selectedImages.concat(uploads.map((img) => img.url))
-                  : selectedImages,
-              });
-              setSelectedImages((prev) =>
-                prev.concat(uploads.map((img) => img.url))
-              );
+              if (typeof selectedImages == "string" && selectedImages == "") {
+                if (uploads.length > 0) {
+                  setSelectedImages((prev) => uploads.map((img) => img.url));
+                }
+              } else if (Array.isArray(selectedImages)) {
+                setSelectedImages((prev) =>
+                  prev.concat(uploads.map((img) => img.url))
+                );
+              }
+              setValue(upload_source, null);
+
+              setOpen(false);
             }
           }),
         {
@@ -133,13 +136,15 @@ const MediaPickerInput = (props) => {
           variant="contained"
           type="button"
           color="primary"
-          disabled={!(form && form.image_upload && form.image_upload.length)}
+          disabled={
+            !(record && record.image_upload && record.image_upload.length)
+          }
           // fullWidth
           style={{
             padding: "5px 45px",
           }}
           onClick={(e) => {
-            handleSubmitWithImage({ ...form });
+            handleSubmitWithImage({ ...record });
           }}
         >
           {/* {loading && <CircularProgress size={25} thickness={2} />} */}
@@ -150,30 +155,49 @@ const MediaPickerInput = (props) => {
   };
 
   useEffect(() => {
-    if (
-      record &&
-      record[source] &&
-      typeof record[source] != "string" &&
-      record[source].length
-    ) {
-      if (firstLoad && firstLoadCount.current <= 1) {
-        onChange(record[source].map((imgObj) => imgObj.url));
-        setSelectedImages(record[source].map((imgObj) => imgObj.url));
-        console.log(record[source]);
-        firstLoadCount.current += 1;
-      } else {
-        setFirstLoad(false);
-      }
-    }
+    // console.log(record);
+    // if (
+    //   record &&
+    //   record[source] &&
+    //   typeof record[source] != "string" &&
+    //   record[source].length
+    // ) {
+    //   if (firstLoad && firstLoadCount.current <= 1 && upload_source) {
+    //     onChange(record[source].map((imgObj) => imgObj.url));
+    //     setSelectedImages(record[source].map((imgObj) => imgObj.url));
+    //     firstLoadCount.current += 1;
+    //   } else {
+    //     setFirstLoad(false);
+    //   }
+    // }
   }, [record]);
 
   useEffect(() => {
-    console.log(selectedImages);
+    if (selectedImages.length) {
+      console.log(record);
+      // if (getSource && !record.thumbnail) {
+      //   setValue(getSource("thumbnail"), selectedImages[0]);
+      // } else if (!form.thumbnail) {
+      //   setValue("thumbnail", selectedImages[0]);
+      // }
+
+      if (typeof selectedImages == "string") {
+        onChange(inputType == "single" && selectedImages);
+      } else if (Array.isArray(selectedImages)) {
+        onChange(inputType == "single" ? selectedImages[0] : selectedImages);
+      }
+    }
   }, [selectedImages]);
+
+  useEffect(() => {
+    if (form && form.image_upload && form.image_upload.length) {
+      console.log(form);
+    }
+  }, [form]);
 
   const MediaInput = (
     <ImageInput
-      source="image_upload"
+      source={upload_source ? upload_source : "image_upload"}
       // format={(value) => {
       //   // console.log(value);
       //   // return value.map((img) => {
@@ -374,7 +398,7 @@ const MediaPickerInput = (props) => {
                 setOpen(false);
               }}
             >
-              <Close/>
+              <Close />
             </Button>
           </Stack>
         </DialogTitle>
@@ -433,7 +457,7 @@ const MediaPickerInput = (props) => {
                     </Button>
                   </Fragment>
                 ),
-                "Upload Images": <SaveToolbar />,
+                "Upload Images": <SaveToolbar setValue={setValue} />,
               }[tabState]}
           </Stack>
         </DialogActions>

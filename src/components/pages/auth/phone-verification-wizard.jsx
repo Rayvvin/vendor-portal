@@ -59,7 +59,7 @@ import StepperForm from "../../containers/phoneVerification/stepperForm";
 import CountryCurrencies from "../../constants/country_currencies";
 import PinInput from "react-pin-input";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-const Logo =  '/assets/img/rayvvin_pngs/Logo.png?url';
+const Logo = "/assets/img/rayvvin_pngs/Logo.png?url";
 
 const medusa = new Medusa({
   maxRetries: 3,
@@ -127,6 +127,7 @@ const Footer = ({
   country_obj,
   hndlSbmtRef,
   setLoading,
+  expectedOtp,
 }) => {
   const {
     isLoading,
@@ -142,10 +143,26 @@ const Footer = ({
 
   const auth = useWatch();
   const user_obj = useGetIdentity();
+  const phonePin = useWatch({ name: "phone_pin" }); // watch for the OTP input
   // This handler is optional
   handleStep(() => {
     // alert("Going to step 2");
   });
+
+  React.useEffect(() => {
+    if (
+      user_obj &&
+      user_obj?.data?.medusa_store &&
+      user_obj?.data?.medusa_store?.metadata &&
+      ((user_obj?.data?.medusa_store?.metadata?.market &&
+        user_obj?.data?.medusa_store?.metadata?.market.id) ||
+        (user_obj?.data?.medusa_store?.metadata?.un_reg_market &&
+          user_obj?.data?.medusa_store?.metadata?.un_reg_market.id))
+    ) {
+      console.log(user_obj?.data);
+    }
+  }, [user_obj]);
+
   return (
     <Stack justifyContent="center" alignItems="center" marginTop={3}>
       <CardActions
@@ -161,19 +178,39 @@ const Footer = ({
             padding: "5px 45px",
           }}
           onClick={(e) => {
-            hndlSbmtRef.current({
-              auth,
-              state_obj,
-              nearby_market_obj,
-              new_market_obj,
-              market_obj,
-              country_obj,
-              setLoading,
-            });
+            if (isLastStep) {
+              hndlSbmtRef.current({
+                auth,
+                state_obj,
+                nearby_market_obj,
+                new_market_obj,
+                market_obj,
+                country_obj,
+                setLoading,
+                expectedOtp,
+                phonePin,
+              });
+            } else {
+              if (
+                user_obj &&
+                user_obj?.data?.medusa_store &&
+                user_obj?.data?.medusa_store?.metadata &&
+                ((user_obj?.data?.medusa_store?.metadata?.market &&
+                  user_obj?.data?.medusa_store?.metadata?.market.id) ||
+                  (user_obj?.data?.medusa_store?.metadata?.un_reg_market &&
+                    user_obj?.data?.medusa_store?.metadata?.un_reg_market.id))
+              ) {
+                redirect("/");
+              } else {
+                redirect("/update-account");
+              }
+            }
           }}
         >
           {loading && <CircularProgress size={25} thickness={2} />}
-          {isFirstStep ? translate("skip") : translate("verify")}
+          {activeStep == 0 || activeStep == 1
+            ? translate("skip")
+            : translate("verify")}
         </Button>
       </CardActions>
       {user_obj && user_obj?.data?.user?.email && (
@@ -251,20 +288,26 @@ const Wrapper = ({ children }) => {
       /> */}
       <AnimatePresence initial={false} mode="wait">
         <div className="ant_bubbles">
-        <div className="bubble_one" style={{
+          <div
+            className="bubble_one"
+            style={{
               transform: `${isSmall ? "translate3d(-120vw,0,0)" : null}`,
-              background: 'rgba(0, 255, 153, .2)',
-              height: '500px',
-              width: '500px',
-              borderRadius: '255px'
-            }}></div>
-            <div className="bubble_two" style={{
+              background: "rgba(0, 255, 153, .2)",
+              height: "500px",
+              width: "500px",
+              borderRadius: "255px",
+            }}
+          ></div>
+          <div
+            className="bubble_two"
+            style={{
               transform: `${isSmall ? "translate3d(100vw,0,0)" : null}`,
-              background: 'rgba(0, 255, 153, .2)',
-              height: '287px',
-              width: '287px',
-              borderRadius: '255px'
-            }}></div>
+              background: "rgba(0, 255, 153, .2)",
+              height: "287px",
+              width: "287px",
+              borderRadius: "255px",
+            }}
+          ></div>
           {/* <img
             className="bubble_one"
             src="https://gw.alipayobjects.com/zos/bmw-prod/bd71b0c6-f93a-4e52-9c8a-f01a9b8fe22b.svg"
@@ -306,9 +349,10 @@ const PhoneNumberInput = ({ source, label }) => {
   );
 };
 
-const CustomPinInput = ({ source, label }) => {
-  const [value, setValue] = useState(null);
+const CustomPinInput = ({ source, label, setVal }) => {
+  // const [value, setValue] = useState(null);
   const { id, field, fieldState } = useInput({ source });
+  const { setValue } = useFormContext(); // retrieve all hook methods
 
   return (
     <label htmlFor={id} style={{ marginTop: "10px" }}>
@@ -335,6 +379,7 @@ const CustomPinInput = ({ source, label }) => {
         }}
         onComplete={(value, index) => {
           console.log(value);
+          setValue(source, value);
         }}
         autoSelect={true}
         regexCriteria={/^[ A-Za-z0-9_@./#&+-]*$/}
@@ -349,6 +394,7 @@ const CustomPinInput = ({ source, label }) => {
 const VerificationWizardForm = ({ hndlSbmtRef }) => {
   const [loading, setLoading] = useState(false);
   const [showVendor, setShowVendor] = useState(false);
+  const [expectedOtp, setExpectedOtp] = useState(null); // New state for the OTP from the SMS service
   const translate = useTranslate();
   const isSmall = useMediaQuery((theme) => theme.breakpoints.down("sm"));
   const [signup_user, setSignUpUser] = useStore("signup_user");
@@ -371,6 +417,7 @@ const VerificationWizardForm = ({ hndlSbmtRef }) => {
   const login = useLogin();
   const location = useLocation();
   const phone = useWatch({ name: "phone" });
+  const phonePin = useWatch({ name: "phone_pin" }); // watch for the OTP input
   const emaill = useWatch({ name: "email" });
   const type = useWatch({ name: "type" });
   const country = useWatch({ name: "country" });
@@ -378,6 +425,7 @@ const VerificationWizardForm = ({ hndlSbmtRef }) => {
   const market = useWatch({ name: "market" });
   const nw_market_name = useWatch({ name: "new_market_name" });
   const nearby_market = useWatch({ name: "nearby_market" });
+  const [otpCooldown, setOtpCooldown] = useState(0);
 
   React.useEffect(() => {
     hndlSbmtRef.current = handleSubmit;
@@ -403,90 +451,109 @@ const VerificationWizardForm = ({ hndlSbmtRef }) => {
     ReadUser();
   }, []);
 
-  React.useEffect(() => {
-    console.log(user, identity);
-  }, [user, identity]);
+  // React.useEffect(() => {
+  //   // console.log(phonePin);
+  //   hndlSbmtRef.current = handleSubmit;
+  // }, [phonePin]);
 
-  React.useEffect(() => {
-    const getUniqueStates = (markets) => {
-      const states = markets.map((market) => {
-        return { id: market.state_id, name: market.state };
-      });
-
-      const uniqueStates = [...new Set(states.map((st) => st.id))].map(
-        (st_id) => {
-          return states.find((stt) => {
-            return stt.id === st_id;
-          });
-        }
-      );
-      return uniqueStates;
-    };
-
-    if (markets) {
-      // console.log(markets)
-      setStates(getUniqueStates(markets));
-    }
-  }, [markets]);
-
-  React.useEffect(() => {
-    if (new_market_name) {
-      console.log(new_market_name);
-    }
-  }, [new_market_name]);
-
-  const createUnregisteredMarket = async (
-    country_id,
-    country,
-    state_id,
-    state,
-    un_reg_market,
-    nearby_market
-  ) => {
-    try {
-      console.log("Here");
-      let { data: un_reg_market_obj, error: new_error } = await supabase
-        .from("un_reg_market")
-        .select("*")
-        .eq("un_reg_market", un_reg_market);
-      // .limit(1);
-
-      if (new_error) {
-        throw new_error;
-      }
-
-      if (un_reg_market_obj.length) {
-        // let mrkt = un_reg_market_obj[0];
-        return { un_reg_market_obj, error: null };
-      } else {
-        const { data, error } = await supabase
-          .from("un_reg_market")
-          .insert([
-            {
-              country_id,
-              country,
-              state_id,
-              state,
-              un_reg_market,
-              nearby_market,
-            },
-          ])
-          .select();
-
-        if (error) {
-          throw error;
-        }
-
-        return { data, error: null };
-      }
-    } catch (error) {
-      // console.error("Supabase insert error:", error.message);
-      notify("New Market Creation Error", { type: "error" });
-      return { data: null, error: error.message };
-    }
-  };
+  // React.useEffect(() => {
+  //   // console.log(expectedOtp);
+  //   hndlSbmtRef.current = handleSubmit;
+  // }, [expectedOtp]);
 
   const Steps = [
+    <>
+      <Stack
+        spacing={0}
+        sx={{ padding: "10px" }}
+        justifyContent={"center"}
+        alignItems={"center"}
+      >
+        <Box
+          // sx={{ marginBlock: "1em" }}
+          justifyContent={"center"}
+          alignItems={"center"}
+        >
+          <Typography
+            sx={{
+              mt: 1,
+              mb: 2,
+              textAlign: "center",
+              fontWeight: "600",
+              lineHeight: "1.2175",
+              color: "var(--title-color)",
+              fontFamily: "Rubik, sans-serif",
+              // whiteSpace: "nowrap",
+              fontSize: "15px",
+            }}
+          >
+            Congratulations on Signing Up!
+          </Typography>
+          {user ? (
+            <>
+              <Stack
+                justifyContent={"center"}
+                alignItems={"center"}
+                sx={{ mt: 3, mb: 3 }}
+              >
+                <CheckCircleOutlineIcon color="secondary" fontSize="large" />
+              </Stack>{" "}
+              <Typography
+                sx={{
+                  mt: 1,
+                  mb: 1,
+                  textAlign: "center",
+                  fontWeight: "600",
+                  lineHeight: "1.2175",
+                  color: "var(--title-color)",
+                  fontFamily: "Rubik, sans-serif",
+                  // whiteSpace: "nowrap",
+                  fontSize: "18px",
+                }}
+              >
+                Join our{" "}
+                <a href={"https://chat.whatsapp.com/B8aQorgFMiCHNJ3I4JGiEB"}>
+                  whatsapp community
+                </a>{" "}
+                to benefit from important updates and insights from like minds.
+              </Typography>
+            </>
+          ) : (
+            <Typography
+              sx={{
+                mt: 3,
+                mb: 3,
+                textAlign: "center",
+                fontWeight: "300",
+                lineHeight: "1.2175",
+                color: "var(--title-color)",
+                fontFamily: "Rubik, sans-serif",
+                // whiteSpace: "nowrap",
+                fontSize: "12px",
+              }}
+            >
+              Retrieving Your Info...
+            </Typography>
+          )}
+
+          <Typography
+            sx={{
+              // mt: 1,
+              mb: 1,
+              textAlign: "center",
+              fontWeight: "300",
+              lineHeight: "1.2175",
+              color: "var(--title-color)",
+              fontFamily: "Rubik, sans-serif",
+              // whiteSpace: "nowrap",
+              fontSize: "10px",
+            }}
+          >
+            We look forward to having you on board!
+          </Typography>
+        </Box>
+      </Stack>
+    </>,
     <>
       <Stack
         spacing={0}
@@ -605,13 +672,21 @@ const VerificationWizardForm = ({ hndlSbmtRef }) => {
     new_market_obj,
     market_obj,
     country_obj,
+    expectedOtp,
+    phonePin,
   }) => {
+    // Before proceeding, compare the OTP entered by the user with the expected OTP
+    console.log(phonePin, auth, expectedOtp);
+    if (parseInt(auth.phone_pin, 10) !== expectedOtp) {
+      toast.error("Invalid OTP, please try again.");
+      return;
+    }
     console.log("Verifying", identity?.data?.medusa_user?.metadata);
     toast.success("User Account Verification Complete");
     if (identity && identity?.data?.medusa_user?.metadata) {
-      redirect("/product");
+      redirect("/");
     } else {
-      redirect("/product");
+      redirect("/complete-registration");
     }
   };
 
@@ -632,6 +707,7 @@ const VerificationWizardForm = ({ hndlSbmtRef }) => {
           market_obj={market_obj}
           country_obj={country_obj}
           setLoading={setLoading}
+          expectedOtp={expectedOtp}
         />
       }
       wrapper={<Wrapper />}
@@ -646,6 +722,10 @@ const VerificationWizardForm = ({ hndlSbmtRef }) => {
               inputBody={_}
               user={user}
               setUser={setUser}
+              expectedOtp={expectedOtp}
+              setExpectedOtp={setExpectedOtp}
+              otpCooldown={otpCooldown}
+              setOtpCooldown={setOtpCooldown}
             ></Step>
           </AnimatedStep>
         );

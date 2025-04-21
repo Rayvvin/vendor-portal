@@ -198,6 +198,7 @@ export const SaveToolbar = (props) => {
 
   const transformData = (data) => {
     delete data.orders;
+    delete data.id;
     // console.log(identity?.data?.medusa_user?.id);
     return {
       ...data,
@@ -237,7 +238,25 @@ export const SaveToolbar = (props) => {
           padding: "5px 40px",
         }}
         transform={transformData}
-        mutationOptions={{ onSuccess, onError }}
+        // mutationOptions={{ onSuccess, onError }}
+        mutationMode='pessimistic' 
+        onClick={(e) => {
+          if (type === "edit" && record) {
+            const updatedData = transformData(form);
+            supabase
+              .from("pickup_requests")
+              .update(updatedData)
+              .eq("id", record.id)
+              .then(({ error }) => {
+                if (error) {
+                  onError(error);
+                } else {
+                  onSuccess(updatedData);
+                }
+              });
+          }
+
+        }}
 
         // sx={{ display: "none" }}
       />
@@ -1142,7 +1161,7 @@ export default function PickupRequestCreateComp(props) {
                       optionText="name"
                       optionValue="id"
                       source="logistics_org_id"
-                      defaultValue={record && record.order_ids}
+                      // defaultValue={record && record.order_ids}
                       choices={
                         regionIds && logOrgs && formData.region_id
                           ? regionIds
