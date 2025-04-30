@@ -973,10 +973,10 @@ export const FulfilmentSummary = (props) => {
                         }),
                       })
                       .then(({ order }) => {
-                        console.log(
-                          order.fulfillment_status,
-                          order.fulfillments
-                        );
+                        // console.log(
+                        //   order.fulfillment_status,
+                        //   order.fulfillments
+                        // );
                       });
                   }}
                 >
@@ -1100,7 +1100,7 @@ export const FulfilmentSummary = (props) => {
                                 error
                               );
                             } else {
-                              console.log("Pickup request created:", data);
+                              // console.log("Pickup request created:", data);
                               toast("Pickup request updated successfully", {
                                 type: "success",
                               });
@@ -1140,7 +1140,7 @@ export const FulfilmentSummary = (props) => {
                       if (error) {
                         console.error("Error creating pickup request:", error);
                       } else {
-                        console.log("Pickup request created:", data);
+                        // console.log("Pickup request created:", data);
                       }
                     })();
                   }}
@@ -1624,7 +1624,7 @@ export default function OrderShowComp(props) {
   useEffect(() => {
     if (record) {
       medusa.admin.orders.retrieve(record.id).then(({ order }) => {
-        console.log(order);
+        // console.log(order);
         setOrder(order);
       });
     }

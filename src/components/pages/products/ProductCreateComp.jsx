@@ -337,6 +337,7 @@ export const SaveToolbar = (props) => {
     }
     console.log(data.variants);
     if (type === "edit") {
+      let id = data.id;
       delete data.store_id;
       delete data.external_id;
       delete data.type_id;
@@ -385,9 +386,10 @@ export const SaveToolbar = (props) => {
         delete data.single_prod_open;
         delete data.bulk_upload;
         delete data.index;
+        delete data.id;
         setValue(`bulk_product_upload.${idx}.error_msg`, null);
         return medusa.admin.products
-          .update(record?.id, {
+          .update(id, {
             ...data,
           })
           .then(({ product }) => {
@@ -649,6 +651,7 @@ export const SaveToolbar = (props) => {
                   variant="outlined"
                   type="button"
                   color="primary"
+                  disabled={type == "edit"}
                   style={{
                     padding: "5px 30px",
                   }}
@@ -665,7 +668,7 @@ export const SaveToolbar = (props) => {
                   type="button"
                   color="primary"
                   disabled={
-                    identity?.data?.medusa_store?.default_currency_code
+                    identity?.data?.medusa_store?.default_currency_code && type != "edit"
                       ? false
                       : true
                   }
@@ -1640,6 +1643,13 @@ function BulkSingleProductInput(props) {
                 spacing={1}
                 marginX={{ lg: 6 }}
               >
+                <TextInput
+                  source={getSource("id")}
+                  disabled
+                  fullWidth
+                  variant="outlined"
+                  sx={{ display: "none" }}
+                />
                 <Typography className="input_title">Description</Typography>
                 <TextInput
                   source={getSource("description")}
@@ -2469,55 +2479,56 @@ const SingleProductForm = ({
 
   return formValues &&
     (type === "edit" ||
-      (!formValues["bulk_product_upload"] ||
-        !formValues["bulk_product_upload"].length)) ? (
-      createSections.map((createSection, index) => (
-        <CreateAccordions
-          createSection={createSection}
-          index={index}
-          key={index}
-          handleChange={handleChange}
-          expanded={expanded}
-        />
-      ))
-    ) : (
-      <Stack
-        border={`1px dashed ${
-          theme && theme === "dark" ? "rgba(244, 244, 244, .4)" : "#007867"
-        }`}
-        borderRadius="6px"
-        paddingY={7}
-        paddingX={5}
-        width="100%"
-        justifyContent="center"
-        fontSize="14px"
-        color={"#6b7280"}
-        alignItems={"center"}
-      >
-        <>
-          <p style={{ fontSize: "13px", textAlign: "center" }}>
-            <span>
-              Single product upload disabled when{" "}
-              <span className="input_title">
-                {formValues.bulk_product_upload.length} Product
-                {formValues.bulk_product_upload.length == 1 ? "" : "s"}
-              </span>{" "}
-              {formValues.bulk_product_upload.length == 1 ? " is " : " are "}
-              currently being {type == "edit" ? "edited" : "created"} in the bulk upload section
-            </span>
-          </p>
-          <p
-            style={{
-              fontSize: "11px",
-              fontStyle: "italic",
-              textAlign: "center",
-            }}
-          >
-            {`Clear the bulk upload to enable single product upload`}
-          </p>
-        </>
-      </Stack>
-    );
+      !formValues["bulk_product_upload"] ||
+      !formValues["bulk_product_upload"].length) ? (
+    createSections.map((createSection, index) => (
+      <CreateAccordions
+        createSection={createSection}
+        index={index}
+        key={index}
+        handleChange={handleChange}
+        expanded={expanded}
+      />
+    ))
+  ) : (
+    <Stack
+      border={`1px dashed ${
+        theme && theme === "dark" ? "rgba(244, 244, 244, .4)" : "#007867"
+      }`}
+      borderRadius="6px"
+      paddingY={7}
+      paddingX={5}
+      width="100%"
+      justifyContent="center"
+      fontSize="14px"
+      color={"#6b7280"}
+      alignItems={"center"}
+    >
+      <>
+        <p style={{ fontSize: "13px", textAlign: "center" }}>
+          <span>
+            Single product upload disabled when{" "}
+            <span className="input_title">
+              {formValues.bulk_product_upload.length} Product
+              {formValues.bulk_product_upload.length == 1 ? "" : "s"}
+            </span>{" "}
+            {formValues.bulk_product_upload.length == 1 ? " is " : " are "}
+            currently being {type == "edit" ? "edited" : "created"} in the bulk
+            upload section
+          </span>
+        </p>
+        <p
+          style={{
+            fontSize: "11px",
+            fontStyle: "italic",
+            textAlign: "center",
+          }}
+        >
+          {`Clear the bulk upload to enable single product upload`}
+        </p>
+      </>
+    </Stack>
+  );
 };
 
 export default function ProductCreateComp(props) {
@@ -2565,7 +2576,6 @@ export default function ProductCreateComp(props) {
   }, [record, identity]);
 
   useEffect(() => {
-    
     if (
       data &&
       record &&
@@ -2584,15 +2594,15 @@ export default function ProductCreateComp(props) {
         )
         .then(({ products, limit, offset, count }) => {
           setProducts(
-            products.map((p) => {
-              return {
-                ...p,
-                images: p.images.map((img) => img.url),
-                store_id: identity?.data?.medusa_user?.store_id,
-              };
-            }).filter(
-              (p) => nw_list.includes(p.id) && p.id !== record.id
-            )
+            products
+              .map((p) => {
+                return {
+                  ...p,
+                  images: p.images.map((img) => img.url),
+                  store_id: identity?.data?.medusa_user?.store_id,
+                };
+              })
+              .filter((p) => nw_list.includes(p.id) && p.id !== record.id)
           );
         });
     }
@@ -3389,7 +3399,7 @@ export default function ProductCreateComp(props) {
                   },
                 }}
               >
-                <MediaPickerInput source="thumbnail" type="single" />
+                <MediaPickerInput source="thumbnail" type="single" record={record} />
               </Stack>
             </Stack>
           </Stack>
@@ -3423,7 +3433,7 @@ export default function ProductCreateComp(props) {
                   },
                 }}
               >
-                <MediaPickerInput source="images" record={product} />
+                <MediaPickerInput source="images" record={record ? record : product} />
               </Stack>
             </Stack>
           </Stack>
@@ -3461,9 +3471,26 @@ export default function ProductCreateComp(props) {
           currency: identity?.data?.medusa_store?.default_currency_code,
         })),
         images: product?.images.map((img) => img.url),
-        bulk_product_upload: products,
+        bulk_product_upload: products?.map((prod) => ({
+          ...prod,
+          options: prod?.options.map((opt) => ({
+            ...opt,
+            variations: opt.values.map((o) => o.value),
+          })),
+          variants: prod?.variants.map((vars) => ({
+            ...vars,
+            amount: vars?.prices?.filter(
+              (o) =>
+                o.currency_code ===
+                identity?.data?.medusa_store?.default_currency_code
+            )[0]?.amount,
+            currency: identity?.data?.medusa_store?.default_currency_code,
+          })),
+        })),
       }}
-      toolbar={<SaveToolbar type={type} product={product} tabState={tabState} />}
+      toolbar={
+        <SaveToolbar type={type} product={product} tabState={tabState} />
+      }
       sx={{
         backgroundColor: `${theme && theme === "dark" ? "#222" : "#fff"}`,
         fontFamily: "Rubik !important",
@@ -3498,35 +3525,72 @@ export default function ProductCreateComp(props) {
         />
       </TabbedForm.Tab>
       <TabbedForm.Tab label="bulk" path="bulk">
-        <ArrayInput
-          source="bulk_product_upload"
-          label="Bulk Product Upload"
-          helperText="Click the + sign to add a new product"
-          sx={{
-            "& .RaSimpleFormIterator-line": {
-              marginBottom: "20px !important",
-              borderBottom: "none",
-            },
-          }}
-        >
-          <SimpleFormIterator
-            fullWidth
-            inline
-            sx={{ gap: "10px", "& .RaSimpleFormIterator-form": {} }}
+        {type == "edit" ? (
+          <Stack
+            border={`1px dashed ${
+              theme && theme === "dark" ? "rgba(244, 244, 244, .4)" : "#007867"
+            }`}
+            borderRadius="6px"
+            paddingY={7}
+            paddingX={5}
+            width="100%"
+            justifyContent="center"
+            fontSize="14px"
+            color={"#6b7280"}
+            alignItems={"center"}
           >
-            <FormDataConsumer>
-              {({ scopedFormData, formData, getSource }) => (
-                <BulkSingleProductInput
-                  scopedFormData={scopedFormData}
-                  getSource={getSource}
-                  formData={formData}
-                  currncy={currncy}
-                  setForm={setForm}
-                />
-              )}
-            </FormDataConsumer>
-          </SimpleFormIterator>
-        </ArrayInput>
+            <>
+              <p style={{ fontSize: "13px", textAlign: "center" }}>
+                <span>
+                  Bulk product update disabled when in{" "}
+                  <span className="input_title">
+                    {type == "edit" ? "edit" : "create"}
+                  </span>{" "}
+                  mode
+                </span>
+              </p>
+              <p
+                style={{
+                  fontSize: "11px",
+                  fontStyle: "italic",
+                  textAlign: "center",
+                }}
+              >
+                {`Use the single product edit section instead`}
+              </p>
+            </>
+          </Stack>
+        ) : (
+          <ArrayInput
+            source="bulk_product_upload"
+            label="Bulk Product Upload"
+            helperText="Click the + sign to add a new product"
+            sx={{
+              "& .RaSimpleFormIterator-line": {
+                marginBottom: "20px !important",
+                borderBottom: "none",
+              },
+            }}
+          >
+            <SimpleFormIterator
+              fullWidth
+              inline
+              sx={{ gap: "10px", "& .RaSimpleFormIterator-form": {} }}
+            >
+              <FormDataConsumer>
+                {({ scopedFormData, formData, getSource }) => (
+                  <BulkSingleProductInput
+                    scopedFormData={scopedFormData}
+                    getSource={getSource}
+                    formData={formData}
+                    currncy={currncy}
+                    setForm={setForm}
+                  />
+                )}
+              </FormDataConsumer>
+            </SimpleFormIterator>
+          </ArrayInput>
+        )}
       </TabbedForm.Tab>
     </TabbedForm>
   );

@@ -470,6 +470,56 @@ function NestedShippingOptionInput(props) {
                 </Stack>
               </Stack>
             </Stack>
+            <Stack
+              width={"-webkit-fill-available"}
+              maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
+              overflow={"hidden"}
+              direction={"row"}
+              margin={0}
+              justifyContent={"space-around"}
+              flexWrap={"wrap"}
+            >
+              <Stack
+                direction="row"
+                spacing={2}
+                maxWidth={"webkit-fill-available"}
+                margin={2}
+                // justifyContent="space-around"
+                justifyContent={{
+                  md: "center",
+                  lg: "center",
+                  sm: "space-around",
+                }}
+              >
+                <Stack
+                  direction="column"
+                  justifyContent={{ md: "start", lg: "center" }}
+                  // marginX={2}
+                  // width={'webkit-fill-available'}
+                >
+                  <Typography className="input_title">
+                    Admin Only
+                  </Typography>
+                  <Typography className="section_subtitle">
+                    Enable or disable the option visiblity to admins.
+                  </Typography>
+                </Stack>
+                <Stack
+                  direction="column"
+                  justifyContent={"center"}
+                  alignItems={"center"}
+                  // marginX={{ lg: "42px" }}
+                  // padding={2}
+                >
+                  <BooleanInput
+                    label=""
+                    source={getSource("admin_only")}
+                    record={scopedFormData}
+                    helperText={false}
+                  />
+                </Stack>
+              </Stack>
+            </Stack>
           </Stack>
         </Stack>
       ),
@@ -935,6 +985,9 @@ function NestedShippingOptionInput(props) {
       delete data.metadata;
       delete data.max_subtotal;
       delete data.min_subtotal;
+      delete data.created_at;
+      delete data.updated_at;
+      delete data.deleted_at;
       medusa.admin.shippingOptions
         .create({
           ...data,
@@ -1221,7 +1274,7 @@ export default function RegionCreateComp(props) {
 
   useEffect(() => {
     async function fetchStoreCurrncs() {
-      if (identity?.data?.medusa_store) {
+      if (identity?.data?.medusa_store && !currncs) {
         try {
           let { data: store_currencies, error } = await supabase
             .from("store_currencies")
@@ -1240,7 +1293,7 @@ export default function RegionCreateComp(props) {
 
   useEffect(() => {
     async function fetchMyPayProvs() {
-      if (identity?.data?.medusa_store && record && record.id) {
+      if (identity?.data?.medusa_store && record && record.id && !my_pay_prov_list) {
         try {
           let { data: region_payment_providers, error } = await supabase
             .from("region_payment_providers")
@@ -1254,7 +1307,7 @@ export default function RegionCreateComp(props) {
     }
 
     async function fetchMyFulfilProvs() {
-      if (identity?.data?.medusa_store && record && record.id) {
+      if (identity?.data?.medusa_store && record && record.id && !my_fulfil_prov_list) {
         try {
           let { data: region_fulfillment_providers, error } = await supabase
             .from("region_fulfillment_providers")
