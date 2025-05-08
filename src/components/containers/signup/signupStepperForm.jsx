@@ -73,7 +73,7 @@ export default function SignUpStepper({
   const redirect = useRedirect();
 
   const totalSteps = () => {
-    return steps.length;
+    return steps.length - 1;
   };
 
   const completedSteps = () => {
@@ -261,17 +261,7 @@ export default function SignUpStepper({
 
         break;
 
-      case 2:
-        if (!marketDataComplete()) {
-          // notify("Business Data Incomplete", { type: "warning" });
-          toast.warn("Market Data Incomplete");
-        } else {
-          nw_compltd[activeStep] = true;
-          setCompleted(nw_compltd);
-          handleNext();
-        }
-
-        break;
+      
 
       default:
         break;
@@ -348,22 +338,22 @@ export default function SignUpStepper({
                   } else {
                     let fieldname = dt;
                     let fieldvalue = data[dt];
-                    switch (dt) {
-                      case "province":
-                        fieldvalue = state_obj.name;
-                        break;
+                    // switch (dt) {
+                    //   case "province":
+                    //     fieldvalue = state_obj.name;
+                    //     break;
 
-                      case "nearby_market":
-                        fieldvalue = nearby_market_obj.market_name;
-                        break;
+                    //   case "nearby_market":
+                    //     fieldvalue = nearby_market_obj.market_name;
+                    //     break;
 
-                      case "new_market_name":
-                        fieldvalue = new_market_obj.un_reg_market;
-                        break;
+                    //   case "new_market_name":
+                    //     fieldvalue = new_market_obj.un_reg_market;
+                    //     break;
 
-                      default:
-                        break;
-                    }
+                    //   default:
+                    //     break;
+                    // }
                     return (
                       <Stack
                         key={fieldname}

@@ -589,11 +589,14 @@ const AccountUpdateWizardForm = ({
               validate={required()}
               fullWidth={isSmall ? true : false}
               variant="outlined"
+              defaultValue={"gb"}
               choices={
                 countries
-                  ? countries.map((cntry) => {
-                      return { id: cntry.iso_2, name: cntry.display_name };
-                    })
+                  ? countries
+                      .filter((ctry) => ctry.iso_2 === "gb")
+                      .map((cntry) => {
+                        return { id: cntry.iso_2, name: cntry.display_name };
+                      })
                   : []
               }
               sx={{ minWidth: "197px" }}
@@ -631,24 +634,14 @@ const AccountUpdateWizardForm = ({
             display="flex"
             flexWrap={"wrap"}
           >
-            <SelectInput
-              // autoFocus
+            <TextInput
               source="province"
-              // type="text"
               label={translate("Your State/Province")}
+              type="text"
               disabled={loading}
-              validate={required()}
+              validate={[required()]}
               fullWidth={isSmall ? true : false}
               variant="outlined"
-              choices={states && country && country === "NG" ? states : []}
-              onChange={(e) => {
-                setState_Obj(
-                  states.find((st) => {
-                    return st.id === e.target.value;
-                  })
-                );
-              }}
-              sx={{ minWidth: "197px" }}
             />
             <TextInput
               source="city"
@@ -691,7 +684,7 @@ const AccountUpdateWizardForm = ({
     country_obj,
     identity,
   }) => {
-    console.log("Updating", auth, new_market_obj);
+    // console.log("Updating", auth, new_market_obj);
     if (identity?.data?.medusa_user) {
       medusa.admin.users
         .update(identity?.data?.medusa_user?.id, {
@@ -703,7 +696,7 @@ const AccountUpdateWizardForm = ({
             address: auth.address,
             businessName: auth.business_name,
             city: auth.city,
-            province: state_obj.name,
+            province: auth.province,
             country: auth.country,
             country_obj,
           },
@@ -715,13 +708,10 @@ const AccountUpdateWizardForm = ({
               name: auth.business_name,
               // default_currency_code: country_obj.currency_iso.toLowerCase(),
               metadata: {
-                // market: { ...market_obj },
-                // un_reg_market: {
-                //   ...new_market_obj,
-                // },
-                state: {
-                  ...state_obj,
-                },
+                city: auth.city,
+                province: auth.province,
+                address: auth.address,
+                country_code: auth.country,
                 country: {
                   ...country_obj,
                 },
@@ -820,36 +810,36 @@ const FormWrapper = () => {
         })
       );
 
-      setState_Obj(
-        states.find((st) => {
-          return st.id === identity?.data?.medusa_store?.metadata?.state.id;
-        })
-      );
+      // setState_Obj(
+      //   states.find((st) => {
+      //     return st.id === identity?.data?.medusa_store?.metadata?.state.id;
+      //   })
+      // );
 
-      setMarket_Obj(
-        markets.find((mrkt) => {
-          return mrkt.id === identity?.data?.medusa_store?.metadata?.market.id;
-        })
-      );
+      // setMarket_Obj(
+      //   markets.find((mrkt) => {
+      //     return mrkt.id === identity?.data?.medusa_store?.metadata?.market.id;
+      //   })
+      // );
 
-      setNearbyMarket_Obj(
-        markets.find((mrkt) => {
-          return (
-            mrkt.id ===
-            identity?.data?.medusa_store?.metadata?.un_reg_market?.nearby_market
-              ?.id
-          );
-        })
-      );
+      // setNearbyMarket_Obj(
+      //   markets.find((mrkt) => {
+      //     return (
+      //       mrkt.id ===
+      //       identity?.data?.medusa_store?.metadata?.un_reg_market?.nearby_market
+      //         ?.id
+      //     );
+      //   })
+      // );
 
-      setNewMarket_Obj(
-        miniMarkets.find((mrkt) => {
-          return (
-            mrkt.id ===
-            identity?.data?.medusa_store?.metadata?.un_reg_market?.id
-          );
-        })
-      );
+      // setNewMarket_Obj(
+      //   miniMarkets.find((mrkt) => {
+      //     return (
+      //       mrkt.id ===
+      //       identity?.data?.medusa_store?.metadata?.un_reg_market?.id
+      //     );
+      //   })
+      // );
     }
   }, [countries, markets, miniMarkets, states]);
   return (
@@ -863,23 +853,23 @@ const FormWrapper = () => {
         username: identity?.data?.medusa_user?.metadata?.username,
         phone: identity?.data?.medusa_user?.metadata?.phone,
         business_name: identity?.data?.medusa_user?.metadata?.businessName,
-        province: identity?.data?.medusa_store?.metadata?.state.id,
+        province: identity?.data?.medusa_store?.metadata?.province,
         city: identity?.data?.medusa_user?.metadata?.city,
         address: identity?.data?.medusa_user?.metadata?.address,
-        market: identity?.data?.medusa_store?.metadata?.market?.id
-          ? identity?.data?.medusa_store?.metadata?.market?.id
-          : identity?.data?.medusa_store?.metadata?.un_reg_market
-          ? `others`
-          : null,
-        nearby_market: identity?.data?.medusa_store?.metadata?.un_reg_market
-          ?.nearby_market?.id
-          ? identity?.data?.medusa_store?.metadata?.un_reg_market?.nearby_market
-              ?.id
-          : null,
-        new_market_name: identity?.data?.medusa_store?.metadata?.un_reg_market
-          ?.id
-          ? identity?.data?.medusa_store?.metadata?.un_reg_market?.id
-          : null,
+        // market: identity?.data?.medusa_store?.metadata?.market?.id
+        //   ? identity?.data?.medusa_store?.metadata?.market?.id
+        //   : identity?.data?.medusa_store?.metadata?.un_reg_market
+        //   ? `others`
+        //   : null,
+        // nearby_market: identity?.data?.medusa_store?.metadata?.un_reg_market
+        //   ?.nearby_market?.id
+        //   ? identity?.data?.medusa_store?.metadata?.un_reg_market?.nearby_market
+        //       ?.id
+        //   : null,
+        // new_market_name: identity?.data?.medusa_store?.metadata?.un_reg_market
+        //   ?.id
+        //   ? identity?.data?.medusa_store?.metadata?.un_reg_market?.id
+        //   : null,
       }}
     >
       <AccountUpdateWizardForm
