@@ -85,7 +85,7 @@ const MediaPickerInput = (props) => {
         const file = img.rawFile;
         // If the file type is missing or incorrect, adjust it
         if (!file.type || file.type === "application/json") {
-          return new File([file], file.name, { type: "image/png" }); // adjust the type as needed
+          return new File([file], file.name, { type: file.type }); // adjust the type as needed
         }
         return file;
       });
