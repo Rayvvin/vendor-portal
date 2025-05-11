@@ -132,17 +132,13 @@ const MediaPickerInput = (props) => {
         />
 
         <Button
-          // variant="outlined"
-          variant="contained"
-          type="button"
-          color="primary"
-          disabled={
-            type == "edit"
-              ? !(record && record.image_upload && record.image_upload.length)
-              : record
-              ? !(record && record.image_upload && record.image_upload.length)
-              : !(form && form.image_upload && form.image_upload.length)
-          }
+            variant="contained"
+            type="button"
+            color="primary"
+            disabled={
+            !((record && record.image_upload && record.image_upload.length) ||
+              (form && form.image_upload && form.image_upload.length))
+            }
           // fullWidth
           style={{
             padding: "5px 45px",
