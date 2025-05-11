@@ -148,7 +148,11 @@ const MediaPickerInput = (props) => {
             padding: "5px 45px",
           }}
           onClick={(e) => {
-            handleSubmitWithImage({ ...record });
+            if (record && record.image_upload) {
+              handleSubmitWithImage({ ...record });
+            } else if (form && form.image_upload) {
+              handleSubmitWithImage({ ...form });
+            }
           }}
         >
           {/* {loading && <CircularProgress size={25} thickness={2} />} */}

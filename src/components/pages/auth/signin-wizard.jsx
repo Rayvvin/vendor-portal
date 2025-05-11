@@ -687,7 +687,7 @@ const SignInWizardForm = ({ hndlSbmtRef, mode, setMode, cred, setCred }) => {
                 setCred({ email, password });
                 setLoading(false);
                 // toast.success("Login Successful");
-                redirect("/verify-phone");
+                redirect("/");
                 // setMode("verify");
               })
               .catch((e) => {

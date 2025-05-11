@@ -235,6 +235,7 @@ export const SaveToolbar = (props) => {
     delete data.sales_channels;
     delete data.lite_mode;
     delete data.bulk_product_upload;
+    delete data["undefined"];
     if (!data.images) {
       delete data.images;
     }
@@ -293,7 +294,13 @@ export const SaveToolbar = (props) => {
         return newOptions;
       };
 
-      data.options = await updateProductOptions(product.options, data.options);
+      if(record){
+        data.options = await updateProductOptions(product.options, data.options);
+      }
+      else{
+        data.options =  data.options.map(opt => {return {"title": opt.title}})
+      }
+      
     } else {
       delete data.options;
     }
@@ -361,11 +368,11 @@ export const SaveToolbar = (props) => {
             })
             .then(({ product }) => {
               // return product;
-              // toast.success("Product Updated");
+              toast.success("Product Updated");
               redirect("show", "product", record.id);
             })
             .catch((error) => {
-              // toast.error(`Product Updated Error: ${error.message}`);
+              toast.error(`Product Updated Error: ${error.message}`);
             }),
           {
             pending: `${type === "edit" ? "Updating" : "Creating"} Product ${
@@ -410,12 +417,12 @@ export const SaveToolbar = (props) => {
               ...data,
             })
             .then(({ product }) => {
-              return product;
-              // toast.success("New Product Created");
-              // redirect("/product");
+              // return product;
+              toast.success("New Product Created");
+              redirect("/product");
             })
             .catch((error) => {
-              // toast.error(`Product Create Error: ${error.message}`);
+              toast.error(`Product Create Error: ${error.message}`);
             }),
           {
             pending: `${type === "edit" ? "Updating" : "Creating"} Product ${

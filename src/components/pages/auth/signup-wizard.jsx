@@ -862,13 +862,40 @@ const SignUpWizardForm = ({ hndlSbmtRef, mode, setMode }) => {
                     password: auth.password,
                   })
                   .then(({ user }) => {
-                    // generateTerm(auth.email, "user")
-                    //   .then((result) => console.log("Response:", result))
-                    //   .catch((error) =>
-                    //     console.error("Request failed:", error)
-                    //   );
-                    toast.success("User Account Created");
-                    setMode("login");
+                    (async () => {
+                      if (user.store_id) {
+                        // Insert into store_currencies table
+                        const { error: insertError } = await supabase
+                          .from("store_currencies")
+                          .insert([
+                            { store_id: user.store_id, currency_code: "gbp" },
+                          ]);
+                        if (insertError) {
+                          console.error(
+                            "Error inserting store currency:",
+                            insertError
+                          );
+                        }
+                        // Update store table to set default_currency_code to "gbp"
+                        const { error: updateError } = await supabase
+                          .from("store")
+                          .update({ default_currency_code: "gbp" })
+                          .eq("id", user.store_id);
+                        if (updateError) {
+                          console.error(
+                            "Error updating store default currency:",
+                            updateError
+                          );
+                        }
+                        generateTerm(auth.email, "user")
+                          .then((result) => console.log("Response:", result))
+                          .catch((error) =>
+                            console.error("Request failed:", error)
+                          );
+                        toast.success("User Account Created");
+                        setMode("login");
+                      }
+                    })();
                   });
               });
             });
