@@ -80,14 +80,24 @@ const MediaPickerInput = (props) => {
         toast.warning(`You need at least 1 image file to initiate upload`);
         return;
       }
+      
+      const files = data.image_upload.map((img) => {
+        const file = img.rawFile;
+        // If the file type is missing or incorrect, adjust it
+        if (!file.type || file.type === "application/json") {
+          return new File([file], file.name, { type: "image/png" }); // adjust the type as needed
+        }
+        return file;
+      });
+    
       await toast.promise(
         medusa.admin.uploads
-          .create(data.image_upload.map((img) => img.rawFile))
+          .create(files)
           .then(({ uploads }) => {
             if (uploads.length) {
-              if (typeof selectedImages == "string" && selectedImages == "") {
+              if (typeof selectedImages === "string" && selectedImages === "") {
                 if (uploads.length > 0) {
-                  setSelectedImages((prev) => uploads.map((img) => img.url));
+                  setSelectedImages(uploads.map((img) => img.url));
                 }
               } else if (Array.isArray(selectedImages)) {
                 setSelectedImages((prev) =>
@@ -95,7 +105,6 @@ const MediaPickerInput = (props) => {
                 );
               }
               setValue(upload_source, null);
-
               setOpen(false);
             }
           }),
