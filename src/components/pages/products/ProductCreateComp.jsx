@@ -3188,7 +3188,7 @@ export default function ProductCreateComp(props) {
                                         .includes(
                                           scopedFormData["title"]?.toLowerCase()
                                         )
-                                    : false
+                                    : scopedFormData["title"] != null ? false : true
                                 }
                                 sx={{
                                   "& .RaAutocompleteInput-textField": {
