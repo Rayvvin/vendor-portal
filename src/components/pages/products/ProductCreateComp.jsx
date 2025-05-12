@@ -3064,7 +3064,9 @@ export default function ProductCreateComp(props) {
                                   label="Option Title"
                                   helperText="Eg. Color"
                                 />
-                                {product &&
+                                {
+                                product &&
+
                                 // product.options &&
                                 // product.options.length &&
                                 // scopedFormData["title"] &&
@@ -3123,7 +3125,11 @@ export default function ProductCreateComp(props) {
                                   >
                                     Create Option
                                   </Button>
-                                ) : (
+                                ) :
+                                record ?
+                                 (
+
+
                                   <Button
                                     // variant="outlined"
                                     sx={{
@@ -3168,7 +3174,7 @@ export default function ProductCreateComp(props) {
                                   >
                                     Delete Option
                                   </Button>
-                                )}
+                                ) : null}
                               </Stack>
                               <AutocompleteArrayInput
                                 disabled={
