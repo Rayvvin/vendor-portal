@@ -3061,8 +3061,8 @@ export default function ProductCreateComp(props) {
                                   helperText="Eg. Color"
                                 />
                                 {product &&
-                                  product.options &&
-                                  product.options.length &&
+                                  // product.options &&
+                                  // product.options.length &&
                                   // scopedFormData["title"] &&
                                   !product?.options
                                     .map((opt) => opt?.title?.toLowerCase())
