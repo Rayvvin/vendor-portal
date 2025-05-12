@@ -294,13 +294,16 @@ export const SaveToolbar = (props) => {
         return newOptions;
       };
 
-      if(record){
-        data.options = await updateProductOptions(product.options, data.options);
+      if (record) {
+        data.options = await updateProductOptions(
+          product.options,
+          data.options
+        );
+      } else {
+        data.options = data.options.map((opt) => {
+          return { title: opt.title };
+        });
       }
-      else{
-        data.options =  data.options.map(opt => {return {"title": opt.title}})
-      }
-      
     } else {
       delete data.options;
     }
@@ -675,7 +678,8 @@ export const SaveToolbar = (props) => {
                   type="button"
                   color="primary"
                   disabled={
-                    identity?.data?.medusa_store?.default_currency_code && type != "edit"
+                    identity?.data?.medusa_store?.default_currency_code &&
+                    type != "edit"
                       ? false
                       : true
                   }
@@ -3061,80 +3065,123 @@ export default function ProductCreateComp(props) {
                                   helperText="Eg. Color"
                                 />
                                 {product &&
-                                  // product.options &&
-                                  // product.options.length &&
-                                  // scopedFormData["title"] &&
-                                  !product?.options
-                                    .map((opt) => opt?.title?.toLowerCase())
-                                    .includes(
-                                      scopedFormData["title"]?.toLowerCase()
-                                    ) ? (
-                                    <Button
-                                      // variant="outlined"
-                                      sx={{
-                                        height: "min-content",
-                                        marginRight: "15px",
-                                        marginTop: "10px",
-                                      }}
-                                      onClick={() => {
-                                        const addProductOption = async (
-                                          option
-                                        ) => {
-                                          // Perform your API call to add a new option here
-                                          try {
-                                            const response =
-                                              await medusa.admin.products.addOption(
-                                                record.id,
-                                                {
-                                                  title: option.title,
-                                                }
-                                              );
-                                            const newOption =
-                                              response.product.options.filter(
-                                                (e) => {
-                                                  return (
-                                                    e.title === option.title
-                                                  );
-                                                }
-                                              )[0];
-                                            toast.success(
-                                              `Added new option: ${newOption.title}`
+                                // product.options &&
+                                // product.options.length &&
+                                // scopedFormData["title"] &&
+                                !product?.options
+                                  .map((opt) => opt?.title?.toLowerCase())
+                                  .includes(
+                                    scopedFormData["title"]?.toLowerCase()
+                                  ) ? (
+                                  <Button
+                                    // variant="outlined"
+                                    sx={{
+                                      height: "min-content",
+                                      marginRight: "15px",
+                                      marginTop: "10px",
+                                    }}
+                                    onClick={() => {
+                                      const addProductOption = async (
+                                        option
+                                      ) => {
+                                        // Perform your API call to add a new option here
+                                        try {
+                                          const response =
+                                            await medusa.admin.products.addOption(
+                                              record.id,
+                                              {
+                                                title: option.title,
+                                              }
                                             );
-                                            if (record) {
-                                              medusa.admin.products
-                                                .retrieve(record.id)
-                                                .then(({ product }) => {
-                                                  // console.log(product);
-                                                  setProduct(product);
-                                                });
-                                            }
-                                          } catch (error) {
-                                            toast.error(
-                                              `Error adding option`,
-                                              error
-                                            );
+                                          const newOption =
+                                            response.product.options.filter(
+                                              (e) => {
+                                                return e.title === option.title;
+                                              }
+                                            )[0];
+                                          toast.success(
+                                            `Added new option: ${newOption.title}`
+                                          );
+                                          if (record) {
+                                            medusa.admin.products
+                                              .retrieve(record.id)
+                                              .then(({ product }) => {
+                                                // console.log(product);
+                                                setProduct(product);
+                                              });
                                           }
-                                        };
+                                        } catch (error) {
+                                          toast.error(
+                                            `Error adding option`,
+                                            error
+                                          );
+                                        }
+                                      };
 
-                                        addProductOption(scopedFormData);
-                                      }}
-                                    >
-                                      Create Option
-                                    </Button>
-                                  ) : (null)}
+                                      addProductOption(scopedFormData);
+                                    }}
+                                  >
+                                    Create Option
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    // variant="outlined"
+                                    sx={{
+                                      height: "min-content",
+                                      marginRight: "15px",
+                                      marginTop: "10px",
+                                    }}
+                                    onClick={() => {
+                                      const deleteProductOption = async (
+                                        option
+                                      ) => {
+                                        try {
+                                          const response =
+                                            await medusa.admin.products.deleteOption(
+                                              record.id,
+                                              option.id
+                                            );
+                                          console.log(response);
+                                          // const newOption =
+                                          //   response.product.options.filter(
+                                          //     (e) => {
+                                          //       return e.title === option.title;
+                                          //     }
+                                          //   )[0];
+                                          toast.success(
+                                            `Deleted option: ${option.title}`
+                                          );
+
+                                          if (response?.product) {
+                                            setProduct(response.product);
+                                          }
+                                        } catch (error) {
+                                          toast.error(
+                                            `Error deleting option`,
+                                            error
+                                          );
+                                        }
+                                      };
+
+                                      deleteProductOption(scopedFormData);
+                                    }}
+                                  >
+                                    Delete Option
+                                  </Button>
+                                )}
                               </Stack>
                               <AutocompleteArrayInput
                                 disabled={
                                   type === "edit"
-                                    ? ((product &&
+                                    ? (product &&
                                         product.options &&
                                         product.options.length &&
                                         scopedFormData["title"] == null) ||
-                                      (!product?.options
+                                      !product?.options
                                         .map((opt) => opt?.title?.toLowerCase())
                                         .includes(
                                           scopedFormData["title"]?.toLowerCase()
-                                        )))
+                                        )
                                     : false
                                 }
                                 sx={{
@@ -3406,7 +3453,11 @@ export default function ProductCreateComp(props) {
                   },
                 }}
               >
-                <MediaPickerInput source="thumbnail" type="single" record={record} />
+                <MediaPickerInput
+                  source="thumbnail"
+                  type="single"
+                  record={record}
+                />
               </Stack>
             </Stack>
           </Stack>
@@ -3440,7 +3491,10 @@ export default function ProductCreateComp(props) {
                   },
                 }}
               >
-                <MediaPickerInput source="images" record={record ? record : product} />
+                <MediaPickerInput
+                  source="images"
+                  record={record ? record : product}
+                />
               </Stack>
             </Stack>
           </Stack>
