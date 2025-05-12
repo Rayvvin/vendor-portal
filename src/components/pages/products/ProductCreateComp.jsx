@@ -3063,12 +3063,12 @@ export default function ProductCreateComp(props) {
                                 {product &&
                                   product.options &&
                                   product.options.length &&
-                                  scopedFormData["title"] &&
+                                  // scopedFormData["title"] &&
                                   !product?.options
                                     .map((opt) => opt?.title?.toLowerCase())
                                     .includes(
-                                      scopedFormData["title"].toLowerCase()
-                                    ) && (
+                                      scopedFormData["title"]?.toLowerCase()
+                                    ) ? (
                                     <Button
                                       // variant="outlined"
                                       sx={{
@@ -3121,20 +3121,20 @@ export default function ProductCreateComp(props) {
                                     >
                                       Create Option
                                     </Button>
-                                  )}
+                                  ) : (null)}
                               </Stack>
                               <AutocompleteArrayInput
                                 disabled={
                                   type === "edit"
-                                    ? (product &&
+                                    ? ((product &&
                                         product.options &&
                                         product.options.length &&
                                         scopedFormData["title"] == null) ||
-                                      !product?.options
+                                      (!product?.options
                                         .map((opt) => opt?.title?.toLowerCase())
                                         .includes(
-                                          scopedFormData["title"].toLowerCase()
-                                        )
+                                          scopedFormData["title"]?.toLowerCase()
+                                        )))
                                     : false
                                 }
                                 sx={{
