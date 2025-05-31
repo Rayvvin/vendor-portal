@@ -169,11 +169,18 @@ export default function DeliveriesAsideComp(props) {
       title: "Deliveries Completed",
       value: (
         <ReferenceManyCount
-          label="Deliveries"
-          reference="deliveries"
-          target="logistics_org_id"
-          filter={{status: 'completed'}}
-        />
+            label="Orders"
+            reference="order"
+            target="id"
+            source="order_ids"
+            filter={
+              record && record.id
+                ? { "id@in": `(${record.order_ids.join(",")})`, status: 'completed' }
+                : null
+            }
+
+            // link
+          />
       ),
       percentage: "+1%",
       icon: <TrendingUp sx={{ color: "var(--emerald)" }} fontSize="large" />,
@@ -192,11 +199,18 @@ export default function DeliveriesAsideComp(props) {
       title: "Deliveries Pending",
       value: (
         <ReferenceManyCount
-          label="Deliveries"
-          reference="deliveries"
-          target="logistics_org_id"
-          filter={{status: 'pending'}}
-        />
+            label="Orders"
+            reference="order"
+            target="id"
+            source="order_ids"
+            filter={
+              record && record.id
+                ? { "id@in": `(${record.order_ids.join(",")})`, status: 'pending' }
+                : null
+            }
+
+            // link
+          />
       ),
       percentage: "",
       icon: <Category sx={{ color: "var(--sunglow)" }} fontSize="large" />,

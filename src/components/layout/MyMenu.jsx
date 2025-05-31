@@ -320,7 +320,7 @@ export const MyMenu = () => {
         to={"/collection_stations"}
         primaryText="Collection Stations"
         leftIcon={<LocalShipping fontSize="small" />}
-      />
+      /> */}
 
       <Menu.Item
         sx={{
@@ -346,7 +346,7 @@ export const MyMenu = () => {
         to={"/deliveries"}
         primaryText="Deliveries"
         leftIcon={<LocalShipping fontSize="small" />}
-      /> */}
+      />
 
       {/* <Stack
         sx={{

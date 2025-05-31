@@ -31,6 +31,7 @@ import {
   ReferenceManyField,
   useGetIdentity,
   useTranslate,
+  FunctionField,
 } from "react-admin";
 import { useMediaQuery, Fab } from "@mui/material";
 import { Fragment, useEffect, useRef, useState } from "react";
@@ -57,7 +58,7 @@ import {
   MoreVert,
   MoreHoriz,
   AccountCircleOutlined,
-  LocationOnOutlined
+  LocationOnOutlined,
 } from "@mui/icons-material";
 import Divider from "@mui/material/Divider";
 
@@ -208,10 +209,10 @@ const CustAvatar = (props) => {
       children: `${name.split(" ")[0][0]}`,
     };
   }
-  return <Avatar {...stringAvatar(`${record?.name}`)} />;
+  return <Avatar {...stringAvatar(`${record?.id}`)} />;
 };
 
-const CollectionStationField = (props) => {
+const DeliveryField = (props) => {
   const { source, currencies, currncy } = props;
   const record = useRecordContext();
   return (
@@ -238,7 +239,16 @@ const CollectionStationField = (props) => {
           direction={"row"}
           spacing={1}
         >
-          <TextField source="name" />
+          <FunctionField
+            label="id"
+            render={(record) =>
+              record.id
+                ? record.id.toString().length > 15
+                  ? record.id.toString().substring(0, 15) + "..."
+                  : record.id
+                : "N/A"
+            }
+          />
         </Stack>
 
         <Stack
@@ -250,9 +260,11 @@ const CollectionStationField = (props) => {
           }}
         >
           <LocationOnOutlined sx={{ fontWeight: "400", fontSize: "14px" }} />
-          {record.first_name || record.last_name ? (
+          {record.delivery_mode && record.delivery_mode !== "pickup" ? (
             <Fragment>
-              <TextField source="first_name" /> <TextField source="last_name" />
+              <TextField source="delivery_mode" />{" "}
+              <Stack marginX={2}>{"-"}</Stack>{" "}
+              <TextField source="route_category" />
             </Fragment>
           ) : (
             <TextField source="address" />
@@ -569,7 +581,7 @@ function formatPrice(price) {
   return parseFloat(price / 100).toFixed(2);
 }
 
-const CollectionStationSummary = (props) => {
+const DeliverySummary = (props) => {
   const { currncy, record, order, regionsIds } = props;
   const translate = useTranslate();
   function stringToColor(string) {
@@ -632,37 +644,33 @@ const CollectionStationSummary = (props) => {
       ),
     },
     {
-      name: "Phone",
+      name: "Mode",
       comp: (
         <Stack marginTop={1}>
-          <TextField source="contact_info.phone" />
+          <TextField source="delivery_mode" />
         </Stack>
       ),
     },
     {
-      name: "Deliveries",
+      name: "Orders",
       comp: (
         <Stack marginTop={1}>
-          <ReferenceManyCount
-            label="Deliveries"
-            reference="deliveries"
-            target="collection_station_id"
-            // source="store_id"
-            // link
+          <FunctionField
+            label="Orders"
+            render={(record) =>
+              record && record.order_ids && record.order_ids.length
+                ? `${record.order_ids.length}`
+                : `${0}`
+            }
           />
         </Stack>
       ),
     },
     {
-      name: "Staff",
+      name: "Category",
       comp: (
         <Stack marginTop={1}>
-          <ReferenceManyCount
-            label="Staff"
-            reference="staff"
-            target="org_id"
-            // link
-          />
+          <TextField source="route_category" label="Category" />
         </Stack>
       ),
     },
@@ -695,7 +703,7 @@ const CollectionStationSummary = (props) => {
         >
           User
         </Typography> */}
-        <CollectionStationField label="Collection Station" />
+        <DeliveryField label="Delivery" />
         <Stack direction={"row"} spacing={{ md: 2, sm: 1, xs: 1 }}>
           {/* <StatusField source="fulfillment_status" /> */}
           <Button
@@ -852,62 +860,6 @@ export default function DeliveriesShowComp(props) {
 
   const general_details_list = [
     {
-      source: "metadata.province",
-      title: "Deliveries Recieved",
-      child: (
-        <ReferenceManyCount
-          label="Deliveries"
-          reference="deliveries"
-          target="logistics_org_id"
-          filter={{status: 'successful'}}
-          sx={{
-            fontSize: { md: "15px", sm: "13px", xs: "14px" },
-            color: "#8d9498",
-          }}
-        />
-      ),
-    },
-    {
-      source: "metadata.city",
-      title: "Ongoing Deliveries",
-      child: (
-        <ReferenceManyCount
-          label="Deliveries"
-          reference="deliveries"
-          target="logistics_org_id"
-          filter={{status: 'pending'}}
-          sx={{
-            fontSize: { md: "15px", sm: "13px", xs: "14px" },
-            color: "#8d9498",
-          }}
-        />
-      ),
-    },
-    { source: "metadata.address", title: "Average Collection Freq. (Monthly)" },
-    { source: "metadata.address", title: "Average Return Freq. (Monthly)" },
-  ];
-
-  const logistics_org_details_list = [
-    {
-      source: "metadata.country_obj.country",
-      title: "Logistics Org",
-      child: (
-        <ReferenceField
-          label="Logistics Org"
-          reference="logistics_orgs"
-          source="id"
-          link={false}
-          sx={{
-            fontSize: { md: "15px", sm: "13px", xs: "14px" },
-            color: "#8d9498",
-          }}
-        >
-          <TextField source="name" />
-        </ReferenceField>
-      ),
-    },
-    {
-      source: "metadata.country_obj.country",
       title: "Region",
       child: (
         <ReferenceField
@@ -915,16 +867,62 @@ export default function DeliveriesShowComp(props) {
           reference="region"
           source="region_id"
           link={false}
-          sx={{
-            fontSize: { md: "15px", sm: "13px", xs: "14px" },
-            color: "#8d9498",
-          }}
         >
           <TextField source="name" />
         </ReferenceField>
       ),
     },
-    { source: "metadata.address", title: "States" },
+    {
+      title: "Delivery Mode",
+      child: (
+        <Stack marginTop={1}>
+          <TextField source="delivery_mode" />
+        </Stack>
+      ),
+    },
+    {
+      title: "Order Count",
+      child: (
+        <Stack marginTop={1}>
+          <FunctionField
+            label="Orders"
+            render={(record) =>
+              record && record.order_ids && record.order_ids.length
+                ? `${record.order_ids.length}`
+                : `${0}`
+            }
+          />
+        </Stack>
+      ),
+    },
+    {
+      title: "Route Category",
+      child: (
+        <Stack marginTop={1}>
+          <TextField source="route_category" label="Category" />
+        </Stack>
+      ),
+    },
+  ];
+
+  const logistics_org_details_list = [
+    {
+      source: "driver_name",
+      title: "Driver",
+    },
+    {
+      source: "driver_phone",
+      title: "Driver",
+    },
+    // {
+    //   source: "metadata.country_obj.country",
+    //   title: "Region",
+    //   child: (
+    //     <Stack marginTop={1}>
+    //       <TextField source="route_category" label="Category" />
+    //     </Stack>
+    //   ),
+    // },
   ];
 
   const _details_market_list = [
@@ -1003,7 +1001,7 @@ export default function DeliveriesShowComp(props) {
           },
         }}
       >
-        <CollectionStationSummary
+        <DeliverySummary
           currncy={currncy}
           record={record}
           regionsIds={regionIds}
@@ -1043,7 +1041,10 @@ export default function DeliveriesShowComp(props) {
           </Stack> */}
 
           <DetailsList fields={general_details_list} title={"General"} />
-          <DetailsList fields={logistics_org_details_list} title={"Logistics Org. Info"} />
+          <DetailsList
+            fields={logistics_org_details_list}
+            title={"Driver info"}
+          />
           {/* <DetailsList
             fields={_details_market_list}
             title={"Market Info"}
@@ -1222,7 +1223,7 @@ export default function DeliveriesShowComp(props) {
 
         {DeliveriesShowList(isSmall, record, theme, currncy)}
 
-        {StaffShowList(isSmall, record, theme)}
+        {/* {StaffShowList(isSmall, record, theme)} */}
       </Stack>
     </SimpleShowLayout>
   );
@@ -1242,7 +1243,7 @@ function DeliveriesShowList(isSmall, record, theme, currncy) {
             fontWeight: "500",
           }}
         >
-          Deliveries
+          Orders
         </Typography>
       </Stack>
 
@@ -1271,11 +1272,18 @@ function DeliveriesShowList(isSmall, record, theme, currncy) {
           </ReferenceField>
         </Stack>
         {"'s "} */}
-        Total Deliveries (
+        Orders (
         <ReferenceManyCount
-          label="Deliveries"
-          reference="deliveries"
-          target="collection_station_id"
+          label="Orders"
+          reference="order"
+          target="id"
+          source="order_ids"
+          filter={
+            record && record.id
+              ? { "id@in": `(${record.order_ids.join(",")})` }
+              : null
+          }
+          // link
         />
         )
       </Stack>
@@ -1310,7 +1318,7 @@ function DeliveriesShowList(isSmall, record, theme, currncy) {
           }}
         >
           <List
-            resource={"deliveries"}
+            resource={"order"}
             actions={false}
             disableSyncWithLocation
             // perPage={10}
@@ -1318,7 +1326,9 @@ function DeliveriesShowList(isSmall, record, theme, currncy) {
             error={false}
             pagination={false}
             filter={
-              record && record.id ? { collection_station_id: record.id } : null
+              record && record.id && record.order_ids && record.order_ids.length
+                ? { "id@in": `(${record.order_ids.map((id) => id).join(",")})` }
+                : null
             }
             // aside={<Aside quickLinks={quickLinks} />}
             empty={false}

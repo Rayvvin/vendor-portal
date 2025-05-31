@@ -29,8 +29,14 @@ import {
   WithListContext,
   ReferenceManyCount,
   ReferenceManyField,
+  FunctionField,
 } from "react-admin";
-import { MoreVert, MoreHoriz, ShoppingCart } from "@mui/icons-material";
+import {
+  MoreVert,
+  MoreHoriz,
+  ShoppingCart,
+  LocalShipping,
+} from "@mui/icons-material";
 import { useMediaQuery, Fab } from "@mui/material";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
@@ -320,7 +326,6 @@ export default function DeliveriesListComp(props) {
         transition: "width 195ms cubic-bezier(0.4, 0, 0.6, 1) 0ms",
         scrollbarColor: "#8d9498 rgba(0, 0, 0, 0.1)",
         scrollbarWidth: "thin",
-
         backgroundColor: `${
           isSmall
             ? "transparent !important"
@@ -329,13 +334,10 @@ export default function DeliveriesListComp(props) {
             : "#fff"
         }`,
         boxShadow: `${isSmall ? "none !important" : "initial"}`,
-
         margin: `${isSmall ? "0px !important" : "initial"}`,
-
         "& .MuiList-root": {
           paddingInline: `${isSmall ? "8px !important" : "initial"}`,
         },
-
         "& .MuiListItem-root": {
           backgroundColor: `${isSmall ? "#fff !important" : "initial"}`,
           boxShadow: `${
@@ -344,7 +346,6 @@ export default function DeliveriesListComp(props) {
           marginY: `${isSmall ? "10px !important" : "initial"}`,
           borderRadius: `${isSmall ? "9px !important" : "initial"}`,
         },
-
         "& .MuiTable-root": {
           width: `${
             sidebarState[0] && !isSmall
@@ -379,20 +380,31 @@ export default function DeliveriesListComp(props) {
           leftAvatar={(record) => (
             <Avatar
               src={record.thumbnail}
-              children={<ShoppingCart />}
+              children={<LocalShipping />}
               sx={{ borderRadius: "9px" }}
             />
           )}
           rightIcon={(record) => <MoreVert />}
           primaryText={(record) => (
             <Stack direction="row" spacing={1} divider={<p>-</p>}>
-              <TextField source="name" />
-              {/* <StatusField source="payment_status" /> */}
+              <FunctionField
+                label="id"
+                render={(record) =>
+                  record.id
+                    ? record.id.toString().length > 10
+                      ? record.id.toString().substring(0, 10) + "..."
+                      : record.id
+                    : "N/A"
+                }
+              />
+              <FunctionField
+                label="Delivery Mode"
+                render={(record) => record.delivery_mode || "N/A"}
+              />
             </Stack>
           )}
           secondaryText={(record) => (
             <Stack direction="row" spacing={1} divider={<p>-</p>}>
-              {/* <StatusField source="status" /> */}
               <ReferenceField
                 label="Regions"
                 reference="region"
@@ -401,6 +413,14 @@ export default function DeliveriesListComp(props) {
               >
                 <TextField source="name" />
               </ReferenceField>
+              <FunctionField
+                label="Orders"
+                render={(record) =>
+                  record && record.order_ids && record.order_ids.length
+                    ? `${record.order_ids.length} Order(s)`
+                    : "0 Orders"
+                }
+              />
               <DateField
                 source="created_at"
                 options={{
@@ -415,9 +435,16 @@ export default function DeliveriesListComp(props) {
         />
       ) : (
         <Datagrid size="small" bulkActionButtons={false} rowClick="show">
-          {/* <TextField source="id" /> */}
-          <TextField source="name" />
-          <TextField source="address" />
+          <FunctionField
+            label="id"
+            render={(record) =>
+              record.id
+                ? record.id.toString().length > 10
+                  ? record.id.toString().substring(0, 10) + "..."
+                  : record.id
+                : "N/A"
+            }
+          />
           <ReferenceField
             label="Regions"
             reference="region"
@@ -426,12 +453,16 @@ export default function DeliveriesListComp(props) {
           >
             <TextField source="name" />
           </ReferenceField>
-          <ReferenceManyCount
-            label="Deliveries"
-            reference="deliveries"
-            target="collection_station_id"
+          <FunctionField
+            label="Orders"
+            render={(record) =>
+              record && record.order_ids && record.order_ids.length
+                ? record.order_ids.length
+                : 0
+            }
           />
-          <ReferenceManyCount label="Staff" reference="staff" target="org_id" />
+          <TextField source="delivery_mode" />
+          <TextField source="route_category" label="Category" />
           <DateField
             label="Date Added"
             source="created_at"

@@ -199,7 +199,21 @@ export const SaveToolbar = (props) => {
   const transformData = (data) => {
     delete data.orders;
     delete data.id;
-    // console.log(identity?.data?.medusa_user?.id);
+
+    if (data.processed && data.packaged) {
+      data.processed_at = new Date().toISOString();
+      data.packaged_at = new Date().toISOString();
+      data.status = "packaged";
+    } else if (data.processed && !data.packaged) {
+      data.processed_at = new Date().toISOString();
+      data.status = "processed";
+    } else if (!data.processed && data.packaged) {
+      data.packaged_at = new Date().toISOString();
+      data.status = "packaged";
+    } else {
+      data.status = "pending";
+    }
+
     return {
       ...data,
       vendor_id:
@@ -226,8 +240,8 @@ export const SaveToolbar = (props) => {
     >
       <SaveButton
         label={type && type === "edit" ? "Update Request" : "Create Request"}
-        alwaysEnable
-        disabled
+        // alwaysEnable
+        disabled={!form.order_ids?.length}
         variant="contained"
         type="button"
         color="primary"
@@ -239,7 +253,7 @@ export const SaveToolbar = (props) => {
         }}
         transform={transformData}
         // mutationOptions={{ onSuccess, onError }}
-        mutationMode='pessimistic' 
+        mutationMode="pessimistic"
         onClick={(e) => {
           if (type === "edit" && record) {
             const updatedData = transformData(form);
@@ -255,7 +269,6 @@ export const SaveToolbar = (props) => {
                 }
               });
           }
-
         }}
 
         // sx={{ display: "none" }}
@@ -381,8 +394,8 @@ function NestedOrderInput(props) {
       ),
     },
     {
-      summaryTitle: "Confirmations",
-      summarySubTitle: "Necessary confirmations before pickup",
+      summaryTitle: "Payment Confirmations",
+      summarySubTitle: "Confirm Payment before pickup",
       body: (
         <Stack maxWidth={"-webkit-fill-available"}>
           <Stack
@@ -453,119 +466,6 @@ function NestedOrderInput(props) {
                   <BooleanInput
                     label=""
                     source={getSource("confirm_payment")}
-                    record={scopedFormData}
-                    helperText={false}
-                  />
-                </Stack>
-              </Stack>
-            </Stack>
-          </Stack>
-          <Stack
-            direction={"row"}
-            justifyContent={"space-around"}
-            flexWrap={"wrap"}
-            marginTop={"10px"}
-          >
-            <Stack
-              width={"-webkit-fill-available"}
-              maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
-              overflow={"hidden"}
-              direction={"row"}
-              margin={0}
-              justifyContent={"space-around"}
-              flexWrap={"wrap"}
-            >
-              <Stack
-                direction="row"
-                spacing={2}
-                maxWidth={"webkit-fill-available"}
-                margin={2}
-                // justifyContent="space-around"
-                justifyContent={{
-                  md: "center",
-                  lg: "center",
-                  sm: "space-around",
-                }}
-              >
-                <Stack
-                  direction="column"
-                  justifyContent={{ md: "start", lg: "center" }}
-                  // marginX={2}
-                  // width={'webkit-fill-available'}
-                >
-                  <Typography className="input_title">Processing</Typography>
-                  <Typography className="section_subtitle">
-                    Check to confirm that you have processed this order and made
-                    available all the items listed.
-                  </Typography>
-                </Stack>
-                <Stack
-                  direction="column"
-                  justifyContent={"center"}
-                  alignItems={"center"}
-                  // marginX={{ lg: "42px" }}
-                  // padding={2}
-                >
-                  <BooleanInput
-                    label=""
-                    source={getSource("confirm_processing")}
-                    record={scopedFormData}
-                    helperText={false}
-                  />
-                </Stack>
-              </Stack>
-            </Stack>
-          </Stack>
-          <Stack
-            direction={"row"}
-            justifyContent={"space-around"}
-            flexWrap={"wrap"}
-            marginTop={"10px"}
-          >
-            <Stack
-              width={"-webkit-fill-available"}
-              maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
-              overflow={"hidden"}
-              direction={"row"}
-              margin={0}
-              justifyContent={"space-around"}
-              flexWrap={"wrap"}
-            >
-              <Stack
-                direction="row"
-                spacing={2}
-                maxWidth={"webkit-fill-available"}
-                margin={2}
-                // justifyContent="space-around"
-                justifyContent={{
-                  md: "center",
-                  lg: "center",
-                  sm: "space-around",
-                }}
-              >
-                <Stack
-                  direction="column"
-                  justifyContent={{ md: "start", lg: "center" }}
-                  // marginX={2}
-                  // width={'webkit-fill-available'}
-                >
-                  <Typography className="input_title">Packaging</Typography>
-                  <Typography className="section_subtitle">
-                    Check to confirm that you have at least, packaged this order
-                    in a manner that ensures safety and delivery in optimal
-                    condition.
-                  </Typography>
-                </Stack>
-                <Stack
-                  direction="column"
-                  justifyContent={"center"}
-                  alignItems={"center"}
-                  // marginX={{ lg: "42px" }}
-                  // padding={2}
-                >
-                  <BooleanInput
-                    label=""
-                    source={getSource("confirm_packaging")}
                     record={scopedFormData}
                     helperText={false}
                   />
@@ -821,8 +721,8 @@ const OrderList = ({ currncy }) => {
               <ArrayInput
                 source="orders"
                 fullWidth
-                // defaultValue={data}
-                // record={data}
+                defaultValue={data}
+                record={data}
               >
                 <SimpleFormIterator
                   inline
@@ -1326,7 +1226,7 @@ export default function PickupRequestCreateComp(props) {
           // width={"-webkit-fill-available"}
         >
           <Stack
-            width={"-webkit-fill-available"}
+            width="100%"
             maxWidth={{ lg: "60vw", md: "70vw", sm: "80vw", xs: "90vw" }}
             overflow={"hidden"}
             direction={"row"}
@@ -1336,39 +1236,151 @@ export default function PickupRequestCreateComp(props) {
             flexWrap={"wrap"}
           >
             <Stack
-              direction="row"
-              justifyContent={"start"}
-              sx={{
-                "& .RaSimpleFormIterator-line, .ra-input": {
-                  marginY: "10px",
-                },
-                // "& .MuiInputLabel-root, span": {
-                //   fontSize: '18px',
-                //   fontWeight: '500'
-                // }
-                "& .RaSimpleFormIterator-inline": {
-                  alignItems: "center !important",
-                },
-              }}
+              spacing={2}
+              padding={{ md: 3, sm: 2, xs: 0 }}
+              paddingX={{ md: "16px !important" }}
+              paddingBottom={{ md: "0px !important" }}
+              width="100%"
+              minWidth={"250px"}
             >
-              {/* <ArrayInput
-                source="metadata"
-                fullWidth
-                defaultValue={record ? record?.metadata : null}
+              <Stack
+                direction={"row"}
+                justifyContent={"space-around"}
+                flexWrap={"wrap"}
+                marginTop={"10px"}
+                width="100%"
               >
-                <SimpleFormIterator
-                  inline
-                  sx={
-                    {
-                      // gap: "10px",
-                      // flexWrap: `${isMedium ? "nowrap" : "wrap"}`,
-                    }
-                  }
+                <Stack
+                  width="100%"
+                  maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
+                  overflow={"hidden"}
+                  direction={"row"}
+                  margin={0}
+                  justifyContent={"space-around"}
+                  flexWrap={"wrap"}
                 >
-                  <TextInput source="key" />
-                  <TextInput source="value" />
-                </SimpleFormIterator>
-              </ArrayInput> */}
+                  <Stack
+                    direction="row"
+                    spacing={2}
+                    maxWidth={"webkit-fill-available"}
+                    margin={2}
+                    // justifyContent="space-around"
+                    width="100%"
+                    justifyContent={{
+                      md: "center",
+                      lg: "space-between",
+                      sm: "space-around",
+                    }}
+                  >
+                    <Stack
+                      direction="column"
+                      justifyContent={{ md: "start", lg: "center" }}
+                      // marginX={2}
+                      width={"webkit-fill-available"}
+                    >
+                      <Typography className="input_title">
+                        Processing
+                      </Typography>
+                      <Typography className="section_subtitle">
+                        Check to confirm that you have processed this order and
+                        made available all the items listed.
+                      </Typography>
+                    </Stack>
+                    <Stack
+                      direction="column"
+                      justifyContent={"center"}
+                      alignItems={"center"}
+                      // marginX={{ lg: "42px" }}
+                      // padding={2}
+                    >
+                      <BooleanInput
+                        label=""
+                        source="processed"
+                        // record={scopedFormData}
+                        helperText={false}
+                      />
+                    </Stack>
+                  </Stack>
+                </Stack>
+              </Stack>
+            </Stack>
+          </Stack>
+          <Stack
+            width="100%"
+            maxWidth={{ lg: "60vw", md: "70vw", sm: "80vw", xs: "90vw" }}
+            overflow={"hidden"}
+            direction={"row"}
+            margin={0}
+            // marginLeft={{lg: '15px', md: '20px'}}
+            justifyContent={"start"}
+            flexWrap={"wrap"}
+          >
+            <Stack
+              spacing={2}
+              padding={{ md: 3, sm: 2, xs: 0 }}
+              paddingX={{ md: "16px !important" }}
+              paddingBottom={{ md: "0px !important" }}
+              width="100%"
+              minWidth={"250px"}
+            >
+              <Stack
+                direction={"row"}
+                justifyContent={"space-around"}
+                flexWrap={"wrap"}
+                marginTop={"10px"}
+              >
+                <Stack
+                  width="100%"
+                  maxWidth={{ md: "100%", sm: "80vw", xs: "90vw" }}
+                  overflow={"hidden"}
+                  direction={"row"}
+                  margin={0}
+                  justifyContent={"space-around"}
+                  flexWrap={"wrap"}
+                >
+                  <Stack
+                    direction="row"
+                    spacing={2}
+                    maxWidth={"webkit-fill-available"}
+                    margin={2}
+                    width="100%"
+                    // justifyContent="space-around"
+                    justifyContent={{
+                      md: "center",
+                      lg: "center",
+                      sm: "space-around",
+                    }}
+                  >
+                    <Stack
+                      direction="column"
+                      justifyContent={{ md: "start", lg: "center" }}
+                      // marginX={2}
+                      // width={'webkit-fill-available'}
+                    >
+                      <Typography className="input_title">Packaging</Typography>
+                      <Typography className="section_subtitle">
+                        Check to confirm that you have at least, packaged this
+                        order in a manner that ensures safety and delivery in
+                        optimal condition.
+                      </Typography>
+                    </Stack>
+                    <Stack
+                      direction="column"
+                      justifyContent={"center"}
+                      alignItems={"center"}
+                      // marginX={{ lg: "42px" }}
+                      // padding={2}
+                    >
+                      <BooleanInput
+                        label=""
+                        source="packaged"
+                        // record={scopedFormData}
+                        helperText={false}
+                      />
+                    </Stack>
+                  </Stack>
+                </Stack>
+              </Stack>
             </Stack>
           </Stack>
         </Stack>

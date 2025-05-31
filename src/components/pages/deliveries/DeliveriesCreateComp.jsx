@@ -68,6 +68,7 @@ import {
   MoreHoriz,
   LocalShipping,
   ShoppingCart,
+  LocationOn,
 } from "@mui/icons-material";
 import { useFormContext } from "react-hook-form";
 import Dialog from "@mui/material/Dialog";
@@ -188,9 +189,9 @@ export const SaveToolbar = (props) => {
   const redirect = useRedirect();
 
   const onSuccess = (data) => {
-    toast.success(`Request ${type === "edit" ? "updated" : "created"}!`);
+    toast.success(`Delivery ${type === "edit" ? "updated" : "created"}!`);
     reset();
-    redirect("/pickup_requests");
+    redirect("show", "deliveries", data.id);
   };
 
   const onError = (error) => {
@@ -225,9 +226,8 @@ export const SaveToolbar = (props) => {
       }}
     >
       <SaveButton
-        label={type && type === "edit" ? "Update Request" : "Create Request"}
-        alwaysEnable
-        disabled
+        label={type && type === "edit" ? "Update Delivery" : "Create Delivery"}
+        // disabled={true}
         variant="contained"
         type="button"
         color="primary"
@@ -763,9 +763,377 @@ function NestedOrderInput(props) {
   );
 }
 
-const OrderList = ({ currncy, setRegionID, setDestRegionID }) => {
-  const { setValue } = useFormContext(); // retrieve all hook methods
+// Replace NestedOrderInput with NestedDestinationInput:
+function NestedDestinationInput(props) {
+  const { getSource, scopedFormData, formData, currncy } = props;
+  const { setValue } = useFormContext();
+  const fullScreen = useMediaQuery((theme) => theme.breakpoints.down("sm"));
+  const isLarge = useMediaQuery((theme) => theme.breakpoints.down("lg"));
+  const [theme, setTheme] = useTheme();
+  const [inner_expanded, setInnerExpanded] = React.useState("panel0");
+  const [order_full, setOrder_full] = React.useState(null);
+  const handleInnerChange = (panel) => (event, newExpanded) => {
+    setInnerExpanded(newExpanded ? panel : false);
+  };
+  const form = useWatch();
+  const redirect = useRedirect();
   const record = useRecordContext();
+  const identity = useGetIdentity();
+  const medusa = new Medusa({
+    maxRetries: 3,
+    baseUrl: import.meta.env.VITE_MEDUSA_URL,
+    apiKey: identity?.data?.medusa_user?.api_token,
+  });
+
+  // Retrieve the order and merge in its shipping_address object.
+  useEffect(() => {
+    if (scopedFormData && scopedFormData.id) {
+      medusa.admin.orders.retrieve(scopedFormData.id).then(({ order }) => {
+        setOrder_full({ ...scopedFormData, ...order });
+      });
+    }
+  }, []);
+
+  // Use shipping_address fields for destination information.
+  const createVariantSections = [
+    {
+      summaryTitle: "Shipping Address Details",
+      summarySubTitle: "Review the destination (shipping address) information.",
+      body: (
+        <Stack width={"-webkit-fill-available"}>
+          <Stack
+            direction={"row"}
+            justifyContent={"center"}
+            flexWrap={"wrap"}
+            marginTop={"10px"}
+          >
+            {order_full && order_full.shipping_address ? (
+              <Stack spacing={1} sx={{ width: "-webkit-fill-available" }}>
+                <Typography sx={{ fontSize: "16px", fontWeight: "bold" }}>
+                  {order_full.shipping_address.name || "Shipping Address"}
+                </Typography>
+                <Typography>
+                  {order_full.shipping_address.address_1}
+                  {order_full.shipping_address.address_2
+                    ? `, ${order_full.shipping_address.address_2}`
+                    : ""}
+                </Typography>
+                <Typography>
+                  {order_full.shipping_address.city},{" "}
+                  {order_full.shipping_address.state}
+                </Typography>
+                <Typography>
+                  {order_full.shipping_address.country?.toUpperCase()}
+                </Typography>
+              </Stack>
+            ) : (
+              <CircularProgress size={25} thickness={2} />
+            )}
+          </Stack>
+        </Stack>
+      ),
+    },
+    {
+      summaryTitle: "Delivery Confirmations",
+      summarySubTitle: "Confirm the delivery to the shipping address.",
+      body: (
+        <Stack maxWidth={"-webkit-fill-available"}>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            flexWrap={"wrap"}
+            marginTop={"10px"}
+          >
+            <Stack
+              direction="row"
+              spacing={2}
+              margin={2}
+              justifyContent={{
+                md: "center",
+                lg: "center",
+                sm: "space-around",
+              }}
+            >
+              <Stack
+                direction="column"
+                justifyContent={{ md: "start", lg: "center" }}
+              >
+                <Typography className="input_title">
+                  Address Verified
+                </Typography>
+                <Typography className="section_subtitle">
+                  Confirm that the shipping address is verified.
+                </Typography>
+              </Stack>
+              <Stack
+                direction="column"
+                justifyContent={"center"}
+                alignItems={"center"}
+              >
+                <BooleanInput
+                  label=""
+                  source={getSource("confirm_address_verified")}
+                  record={scopedFormData}
+                  helperText={false}
+                />
+              </Stack>
+            </Stack>
+          </Stack>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            flexWrap={"wrap"}
+            marginTop={"10px"}
+          >
+            <Stack
+              direction="row"
+              spacing={2}
+              margin={2}
+              justifyContent={{
+                md: "center",
+                lg: "center",
+                sm: "space-around",
+              }}
+            >
+              <Stack
+                direction="column"
+                justifyContent={{ md: "start", lg: "center" }}
+              >
+                <Typography className="input_title">
+                  Delivery Completed
+                </Typography>
+                <Typography className="section_subtitle">
+                  Confirm that the delivery has been made to this address.
+                </Typography>
+              </Stack>
+              <Stack
+                direction="column"
+                justifyContent={"center"}
+                alignItems={"center"}
+              >
+                <BooleanInput
+                  label=""
+                  source={getSource("confirm_delivery_completed")}
+                  record={scopedFormData}
+                  helperText={false}
+                />
+              </Stack>
+            </Stack>
+          </Stack>
+          <Stack
+            direction={"row"}
+            justifyContent={"space-around"}
+            flexWrap={"wrap"}
+            marginTop={"10px"}
+          >
+            <Stack
+              direction="row"
+              spacing={2}
+              margin={2}
+              justifyContent={{
+                md: "center",
+                lg: "center",
+                sm: "space-around",
+              }}
+            >
+              <Stack
+                direction="column"
+                justifyContent={{ md: "start", lg: "center" }}
+              >
+                <Typography className="input_title">
+                  Condition Verified
+                </Typography>
+                <Typography className="section_subtitle">
+                  Confirm that items are in good condition upon receipt.
+                </Typography>
+              </Stack>
+              <Stack
+                direction="column"
+                justifyContent={"center"}
+                alignItems={"center"}
+              >
+                <BooleanInput
+                  label=""
+                  source={getSource("confirm_condition_verified")}
+                  record={scopedFormData}
+                  helperText={false}
+                />
+              </Stack>
+            </Stack>
+          </Stack>
+        </Stack>
+      ),
+    },
+  ];
+
+  return (
+    <Stack
+      className="stat-card"
+      paddingY={2}
+      paddingX={2}
+      overflow={"auto"}
+      width={"100%"}
+      direction={"row"}
+      borderRadius={2}
+      border={"2px solid rgba(228, 228, 231, 1)"}
+      spacing={1}
+      justifyContent={"space-between"}
+    >
+      <Stack direction={"row"} spacing={2}>
+        <Stack
+          justifyContent={"center"}
+          alignItems={"center"}
+          backgroundColor={"rgba(243, 244, 246, 1)"}
+          paddingX={1}
+          borderRadius={2}
+        >
+          <LocationOn
+            sx={{
+              color: "rgba(107, 114, 128, 1)",
+            }}
+          />
+        </Stack>
+        <Stack justifyContent={"center"} alignItems={"stretch"}>
+          <Typography
+            sx={{
+              fontSize: { md: "17px", sm: "15px", xs: "13px" },
+              fontWeight: "600",
+            }}
+          >
+            {order_full && order_full.shipping_address
+              ? `Destination for Order #${scopedFormData?.display_id} - ${
+                  order_full.shipping_address.address_1 || ""
+                }, ${order_full.shipping_address.city || ""}, ${
+                  order_full.shipping_address.state || ""
+                }, ${order_full.shipping_address.country?.toUpperCase() || ""}`
+              : `Order #${scopedFormData?.display_id} - Destination details loading...`}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: { md: "14px", sm: "13px", xs: "12px" },
+              color: "#8d9498",
+            }}
+          >
+            {order_full && order_full.shipping_address
+              ? `Recipient: ${order_full.customer.first_name || "N/A"} ${
+                  order_full.customer.last_name || "N/A"
+                }`
+              : ""}
+          </Typography>
+        </Stack>
+      </Stack>
+      <span>
+        <Button
+          sx={{ minWidth: "fit-content" }}
+          onClick={() => {
+            setValue(getSource("variant_open"), true);
+          }}
+        >
+          <MoreVert fontSize="medium" />
+        </Button>
+      </span>
+      <BooleanInput
+        sx={{ display: "none" }}
+        source={getSource("variant_open")}
+        record={scopedFormData}
+      />
+      <Dialog
+        open={
+          scopedFormData && scopedFormData["variant_open"]
+            ? scopedFormData["variant_open"]
+            : false
+        }
+        onClose={() => {
+          setValue(getSource("variant_open"), false);
+        }}
+        scroll={"paper"}
+        aria-labelledby="scroll-dialog-title"
+        aria-describedby="scroll-dialog-description"
+        fullScreen={fullScreen}
+        fullWidth={true}
+      >
+        <DialogTitle
+          id="scroll-dialog-title"
+          sx={{
+            color: `${
+              theme && theme === "dark" ? "#8D9498" : "rgba(0, 0, 0, .87)"
+            }`,
+            fontFamily: "Rubik !important",
+            fontWeight: "500",
+            fontSize: "24px",
+          }}
+        >
+          {scopedFormData &&
+            scopedFormData.display_id &&
+            `Destination Details for Order #${scopedFormData.display_id}`}
+        </DialogTitle>
+        <DialogContent dividers={"paper"}>
+          <DialogContentText
+            id="scroll-dialog-description"
+            tabIndex={-1}
+            sx={{
+              backgroundColor: `${theme && theme === "dark" ? "#222" : "#fff"}`,
+              fontFamily: "Rubik !important",
+              "& .MuiTypography-root, p, span": {
+                fontFamily: "Rubik !important",
+              },
+              "& .section_subtitle": {
+                color: `${theme && theme === "dark" ? "#8D9498" : "#6b7280"}`,
+                fontSize: "14px !important",
+              },
+              "& .input_title": {
+                fontWeight: "500",
+                fontSize: "14px !important",
+              },
+            }}
+          >
+            {createVariantSections.map((createSection, index) => (
+              <CreateAccordions
+                createSection={createSection}
+                index={index}
+                key={index}
+                expanded={inner_expanded}
+                handleChange={handleInnerChange}
+              />
+            ))}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setValue(getSource("variant_open"), false);
+            }}
+          >
+            Cancel
+          </Button>
+          {scopedFormData && scopedFormData.id && (
+            <Button
+              onClick={() => {
+                setValue(
+                  "order_ids",
+                  form.order_ids?.filter((ord) => ord !== scopedFormData.id)
+                );
+              }}
+            >
+              Delete
+            </Button>
+          )}
+          <Button
+            onClick={() => {
+              setValue(getSource("variant_open"), false);
+            }}
+          >
+            Save and Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Stack>
+  );
+}
+
+// Update OrderList to keep referencing order_ids.
+const DestinationList = ({ currncy, setRegionID, setDestRegionID }) => {
+  const { setValue } = useFormContext();
   const formdata = useWatch();
   const region_id = useWatch({ name: "region_id" });
   const dest_region_id = useWatch({ name: "dest_region_id" });
@@ -805,40 +1173,20 @@ const OrderList = ({ currncy, setRegionID, setDestRegionID }) => {
           ) {
             setValue("orders", []);
           }
-
           return (
             !isLoading && (
-              <ArrayInput
-                source="orders"
-                fullWidth
-                // defaultValue={data}
-                // record={data}
-              >
-                <SimpleFormIterator
-                  inline
-                  disableAdd
-                  sx={
-                    {
-                      // gap: "10px",
-                      // flexWrap: `${isMedium ? "nowrap" : "wrap"}`,
-                    }
-                  }
-                >
+              <ArrayInput source="orders" fullWidth>
+                <SimpleFormIterator inline disableAdd>
                   <FormDataConsumer>
-                    {({ scopedFormData, formData, getSource }) => {
-                      // console.log(scopedFormData);
-                      return (
-                        <NestedOrderInput
-                          scopedFormData={scopedFormData}
-                          getSource={getSource}
-                          formData={formData}
-                          // ship_prof_list={ship_prof_list}
-                          // fulfil_prov_list={fulfil_prov_list}
-                          refetch={refetch}
-                          currncy={currncy}
-                        />
-                      );
-                    }}
+                    {({ scopedFormData, formData, getSource }) => (
+                      <NestedDestinationInput
+                        scopedFormData={scopedFormData}
+                        getSource={getSource}
+                        formData={formData}
+                        refetch={refetch}
+                        currncy={currncy}
+                      />
+                    )}
                   </FormDataConsumer>
                 </SimpleFormIterator>
               </ArrayInput>
@@ -1085,7 +1433,7 @@ export default function DeliveriesCreateComp(props) {
           .from("order")
           .select("*")
           .eq("store_id", identity.data.medusa_store.id);
-          
+
         // .maybeSingle();
 
         // console.log(logistics_org_regions);
@@ -1146,7 +1494,7 @@ export default function DeliveriesCreateComp(props) {
 
   const createSections = [
     {
-      summaryTitle: "General Info",
+      summaryTitle: "General",
       summarySubTitle: "Add/Update the basic information for this request",
       body: (
         <Stack
@@ -1165,17 +1513,47 @@ export default function DeliveriesCreateComp(props) {
             flexWrap={"wrap"}
           >
             <Stack
+              direction="row"
               spacing={2}
-              padding={{ md: 3, sm: 2, xs: 0 }}
-              paddingX={{ md: "16px !important" }}
-              paddingBottom={{ md: "0px !important" }}
-              width={{ lg: "50%", md: "45%", xs: "100%" }}
-              minWidth={"200px"}
+              maxWidth={"webkit-fill-available"}
+              marginY={2}
+              marginX={{ lg: "16px", md: "16px", sm: "0px", xs: "0px" }}
+              // justifyContent="space-around"
+              width="100%"
+              justifyContent="space-between"
             >
-              <Typography className="input_title">Region</Typography>
-              <ReferenceInput source="region_id" reference="region">
-                <AutocompleteInput optionText="name" optionValue="id" />
-              </ReferenceInput>
+              <Stack
+                direction="column"
+                justifyContent={{ md: "start", lg: "center" }}
+                // marginX={2}
+                width={"webkit-fill-available"}
+              >
+                <Typography className="input_title">
+                  Institutional Delivery?
+                </Typography>
+                <Typography
+                  className="section_subtitle"
+                  fontSize="12px !important"
+                >
+                  Check to confirm that this is an instutional delivery. This
+                  applies if you're an admin/registered logistic org. and not
+                  just a vendor looking to deliver orders for your store.
+                </Typography>
+              </Stack>
+              <Stack
+                direction="column"
+                justifyContent={"center"}
+                alignItems={"center"}
+                // marginX={{ lg: "42px" }}
+                // padding={2}
+              >
+                <BooleanInput
+                  label=""
+                  source="is_institutional_delivery"
+                  // record={scopedFormData}
+                  helperText={false}
+                />
+              </Stack>
             </Stack>
             <Stack
               spacing={2}
@@ -1185,33 +1563,133 @@ export default function DeliveriesCreateComp(props) {
               width={{ lg: "50%", md: "45%", xs: "100%" }}
               minWidth={"200px"}
             >
-              <Typography className="input_title">Logistics Org</Typography>
+              <Typography className="input_title">Region</Typography>
               <FormDataConsumer>
                 {({ scopedFormData, formData, getSource }) => {
-                  // console.log(scopedFormData);
+                  return (
+                    <ReferenceInput
+                      source="region_id"
+                      reference="region"
+                      filter={{ "id@neq": formData.dest_region_id }}
+                    >
+                      <AutocompleteInput optionText="name" optionValue="id" />
+                    </ReferenceInput>
+                  );
+                }}
+              </FormDataConsumer>
+            </Stack>
+            <FormDataConsumer>
+              {({ scopedFormData, formData, getSource }) => {
+                // console.log(scopedFormData);
+                return (
+                  <Fragment>
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "45%", xs: "100%" }}
+                      minWidth={"200px"}
+                      display={
+                        formData.is_institutional_delivery ? "flex" : "none"
+                      }
+                    >
+                      <Typography className="input_title">
+                        Logistics Org
+                      </Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(scopedFormData);
+                          return (
+                            <AutocompleteInput
+                              optionText="name"
+                              optionValue="id"
+                              source="logistics_org_id"
+                              defaultValue={record && record.order_ids}
+                              choices={
+                                regionIds && logOrgs && formData.region_id
+                                  ? regionIds
+                                      .filter((reg) => {
+                                        return (
+                                          reg.region_id === formData.region_id
+                                        );
+                                      })
+                                      .map((reg_data) => {
+                                        return {
+                                          id: reg_data.logistics_org_id,
+                                          name: logOrgs.find(
+                                            (log_org) =>
+                                              log_org.id ===
+                                              reg_data.logistics_org_id
+                                          ).name,
+                                        };
+                                      })
+                                  : []
+                              }
+                            />
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </Stack>
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "45%", xs: "100%" }}
+                      minWidth={"200px"}
+                      display={
+                        formData.is_institutional_delivery ? "flex" : "none"
+                      }
+                    >
+                      <Typography className="input_title">
+                        Shipping Option
+                      </Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(formData);
+                          return (
+                            <ReferenceInput
+                              source="shipping_option"
+                              reference="shipping_option"
+                              filter={{ region_id: formData.region_id }}
+                            >
+                              <AutocompleteInput
+                                optionText="name"
+                                optionValue="id"
+                              />
+                            </ReferenceInput>
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </Stack>
+                  </Fragment>
+                );
+              }}
+            </FormDataConsumer>
+
+            <Stack
+              spacing={2}
+              padding={{ md: 3, sm: 2, xs: 0 }}
+              paddingX={{ md: "16px !important" }}
+              paddingBottom={{ md: "0px !important" }}
+              width={{ lg: "50%", md: "45%", xs: "100%" }}
+              minWidth={"200px"}
+            >
+              <Typography className="input_title">Delivery Mode</Typography>
+              <FormDataConsumer>
+                {({ scopedFormData, formData, getSource }) => {
+                  // console.log(formData);
                   return (
                     <AutocompleteInput
                       optionText="name"
                       optionValue="id"
-                      source="logistics_org_id"
-                      defaultValue={record && record.order_ids}
-                      choices={
-                        regionIds && logOrgs && formData.region_id
-                          ? regionIds
-                              .filter((reg) => {
-                                return reg.region_id === formData.region_id;
-                              })
-                              .map((reg_data) => {
-                                return {
-                                  id: reg_data.logistics_org_id,
-                                  name: logOrgs.find(
-                                    (log_org) =>
-                                      log_org.id === reg_data.logistics_org_id
-                                  ).name,
-                                };
-                              })
-                          : []
-                      }
+                      source="delivery_mode"
+                      // defaultValue={record && record.state}
+                      choices={[
+                        { id: "pickup", name: "Pickup" },
+                        { id: "doorstep", name: "Doorstep" },
+                      ]}
                     />
                   );
                 }}
@@ -1225,31 +1703,7 @@ export default function DeliveriesCreateComp(props) {
               width={{ lg: "50%", md: "45%", xs: "100%" }}
               minWidth={"200px"}
             >
-              <Typography className="input_title">Shipping Option</Typography>
-              <FormDataConsumer>
-                {({ scopedFormData, formData, getSource }) => {
-                  // console.log(formData);
-                  return (
-                    <ReferenceInput
-                      source="shipping_option"
-                      reference="shipping_option"
-                      filter={{ region_id: formData.region_id }}
-                    >
-                      <AutocompleteInput optionText="name" optionValue="id" />
-                    </ReferenceInput>
-                  );
-                }}
-              </FormDataConsumer>
-            </Stack>
-            <Stack
-              spacing={2}
-              padding={{ md: 3, sm: 2, xs: 0 }}
-              paddingX={{ md: "16px !important" }}
-              paddingBottom={{ md: "0px !important" }}
-              width={{ lg: "50%", md: "45%", xs: "100%" }}
-              minWidth={"200px"}
-            >
-              <Typography className="input_title">Type</Typography>
+              <Typography className="input_title">Route Category</Typography>
               <FormDataConsumer>
                 {({ scopedFormData, formData, getSource }) => {
                   // console.log(formData);
@@ -1257,8 +1711,8 @@ export default function DeliveriesCreateComp(props) {
                     <AutocompleteInput
                       optionText="name"
                       optionValue="id"
-                      source="type"
-                      defaultValue={record && record.state}
+                      source="route_category"
+                      // defaultValue={record && record.state}
                       choices={[
                         { id: "intra_state", name: "Intra State" },
                         { id: "inter_state", name: "Inter State" },
@@ -1269,13 +1723,61 @@ export default function DeliveriesCreateComp(props) {
                 }}
               </FormDataConsumer>
             </Stack>
+            <Stack
+              spacing={2}
+              padding={{ md: 3, sm: 2, xs: 0 }}
+              paddingX={{ md: "16px !important" }}
+              paddingBottom={{ md: "0px !important" }}
+              width={{ lg: "50%", md: "45%", xs: "100%" }}
+              minWidth={"200px"}
+            >
+              <Typography className="input_title">
+                Vendor Customer Relation
+              </Typography>
+              <FormDataConsumer>
+                {({ formData, record, getSource }) => {
+                  const allOptions = [
+                    {
+                      id: "one_to_one",
+                      name: "Single Vendor - Single Customer",
+                    },
+                    {
+                      id: "one_to_many",
+                      name: "Single Vendor - Many Customers",
+                    },
+                    {
+                      id: "many_to_one",
+                      name: "Many Vendors - Single Customers",
+                    },
+                    {
+                      id: "many_to_one",
+                      name: "Many Vendors - Many Customers",
+                    },
+                  ];
+                  const choices = !formData.is_institutional_delivery
+                    ? allOptions.filter((option) =>
+                        option.id.startsWith("one_")
+                      )
+                    : allOptions;
+                  return (
+                    <AutocompleteInput
+                      optionText="name"
+                      optionValue="id"
+                      source="vendor_customer_relation"
+                      defaultValue={record && record.state}
+                      choices={choices}
+                    />
+                  );
+                }}
+              </FormDataConsumer>
+            </Stack>
           </Stack>
         </Stack>
       ),
     },
     {
-      summaryTitle: "Route Info",
-      summarySubTitle: "Specify the origin & destination of this delivery",
+      summaryTitle: "Route Origin",
+      summarySubTitle: "Specify the origin of this delivery",
       body: (
         <FormDataConsumer>
           {({ scopedFormData, formData, getSource }) => {
@@ -1297,100 +1799,222 @@ export default function DeliveriesCreateComp(props) {
                   flexWrap={"wrap"}
                 >
                   <Stack
+                    direction="row"
                     spacing={2}
-                    padding={{ md: 3, sm: 2, xs: 0 }}
-                    paddingX={{ md: "16px !important" }}
-                    paddingBottom={{ md: "0px !important" }}
-                    width={{ lg: "50%", md: "45%", xs: "100%" }}
-                    minWidth={"200px"}
+                    maxWidth={"webkit-fill-available"}
+                    marginY={2}
+                    marginX={{ lg: "16px", md: "16px", sm: "0px", xs: "0px" }}
+                    // justifyContent="space-around"
+                    width="100%"
+                    justifyContent="space-between"
+                    display={
+                      formData.is_institutional_delivery ? "flex" : "none"
+                    }
                   >
-                    <Typography className="input_title">
-                      Origin State
-                    </Typography>
-                    <AutocompleteInput
-                      optionText="name"
-                      optionValue="id"
-                      source="origin_state"
-                      defaultValue={record && record.state}
-                      choices={
-                        temp_coll &&
-                        temp_coll.current &&
-                        temp_coll.current.length
-                          ? temp_coll.current.map((coll_st_data) => {
-                              return {
-                                id: coll_st_data.state.id,
-                                name: coll_st_data.state.state,
-                              };
-                            })
-                          : []
-                      }
-                    />
+                    <Stack
+                      direction="column"
+                      justifyContent={{ md: "start", lg: "center" }}
+                      // marginX={2}
+                      width={"webkit-fill-available"}
+                    >
+                      <Typography className="input_title">
+                        Registered Origin Station
+                      </Typography>
+                      <Typography className="section_subtitle">
+                        Check to confirm that your origin is a registered
+                        station.
+                      </Typography>
+                    </Stack>
+                    <Stack
+                      direction="column"
+                      justifyContent={"center"}
+                      alignItems={"center"}
+                      // marginX={{ lg: "42px" }}
+                      // padding={2}
+                    >
+                      <BooleanInput
+                        label=""
+                        source="registered_origin_station"
+                        // record={scopedFormData}
+                        helperText={false}
+                      />
+                    </Stack>
                   </Stack>
+
+                  {!formData.registered_origin_station ? (
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "50%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">
+                        Origin State
+                      </Typography>
+                      <TextInput source="origin_state" />
+                    </Stack>
+                  ) : (
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "50%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">
+                        Origin State
+                      </Typography>
+                      <AutocompleteInput
+                        optionText="name"
+                        optionValue="id"
+                        source="origin_state"
+                        defaultValue={record && record.state}
+                        choices={
+                          temp_coll &&
+                          temp_coll.current &&
+                          temp_coll.current.length
+                            ? temp_coll.current.map((coll_st_data) => {
+                                return {
+                                  id: coll_st_data.state.id,
+                                  name: coll_st_data.state.state,
+                                };
+                              })
+                            : []
+                        }
+                      />
+                    </Stack>
+                  )}
+
+                  {!formData.registered_origin_station ? (
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "50%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">
+                        Origin City
+                      </Typography>
+                      <TextInput source="origin_city" />
+                    </Stack>
+                  ) : (
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "50%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">
+                        Origin Collection Station
+                      </Typography>
+                      <ReferenceInput
+                        source="origin_collection_station_id"
+                        reference="collection_stations"
+                        filter={{ region_id: formData.region_id }}
+                      >
+                        <AutocompleteInput optionText="name" optionValue="id" />
+                      </ReferenceInput>
+                    </Stack>
+                  )}
+
                   <Stack
                     spacing={2}
                     padding={{ md: 3, sm: 2, xs: 0 }}
                     paddingX={{ md: "16px !important" }}
                     paddingBottom={{ md: "0px !important" }}
-                    width={{ lg: "50%", md: "45%", xs: "100%" }}
+                    width={{ lg: "100%", md: "100%", xs: "100%" }}
                     minWidth={"200px"}
                   >
                     <Typography className="input_title">
-                      Origin Collection Station
+                      Origin Address
                     </Typography>
-                    <ReferenceInput
-                      source="origin_collection_station_id"
-                      reference="collection_stations"
-                      filter={{ region_id: formData.region_id }}
-                    >
-                      <AutocompleteInput optionText="name" optionValue="id" />
-                    </ReferenceInput>
+                    <FormDataConsumer>
+                      {({ scopedFormData, formData, getSource }) => {
+                        // console.log(formData);
+                        return <TextInput source="origin_address" />;
+                      }}
+                    </FormDataConsumer>
                   </Stack>
+                </Stack>
+              </Stack>
+            );
+          }}
+        </FormDataConsumer>
+      ),
+    },
+
+    {
+      summaryTitle: "Pickup Destination",
+      summarySubTitle: "Specify the pickup destination of this delivery",
+      body: (
+        <FormDataConsumer>
+          {({ scopedFormData, formData, getSource }) => {
+            // console.log(formData);
+            return (
+              <Stack
+                direction={"row"}
+                justifyContent={"space-around"}
+                flexWrap={"wrap"}
+                marginTop={"10px"}
+              >
+                <Stack
+                  width={"-webkit-fill-available"}
+                  maxWidth={{ lg: "60vw", md: "70vw", sm: "80vw", xs: "90vw" }}
+                  overflow={"hidden"}
+                  direction={"row"}
+                  margin={0}
+                  justifyContent={"space-around"}
+                  flexWrap={"wrap"}
+                >
                   {
                     {
-                      intra_state: (
+                      pickup: (
                         <Fragment>
-                          <Stack
-                            spacing={2}
-                            padding={{ md: 3, sm: 2, xs: 0 }}
-                            paddingX={{ md: "16px !important" }}
-                            paddingBottom={{ md: "0px !important" }}
-                            width={{ lg: "100%", md: "45%", xs: "100%" }}
-                            minWidth={"200px"}
-                          >
-                            <Typography className="input_title">
-                              Dest. Collection Station
-                            </Typography>
-                            <FormDataConsumer>
-                              {({ scopedFormData, formData, getSource }) => {
-                                // console.log(formData);
-                                return (
-                                  <ReferenceInput
-                                    source="dest_collection_station_id"
-                                    reference="collection_stations"
-                                    filter={{
-                                      region_id: formData.region_id,
-                                    }}
-                                  >
-                                    <AutocompleteInput
-                                      optionText="name"
-                                      optionValue="id"
-                                    />
-                                  </ReferenceInput>
-                                );
-                              }}
-                            </FormDataConsumer>
-                          </Stack>
-                        </Fragment>
-                      ),
-                      inter_state: (
-                        <Fragment>
+                          {formData.route_category === "international" && (
+                            <Stack
+                              spacing={2}
+                              padding={{ md: 3, sm: 2, xs: 0 }}
+                              paddingX={{ md: "16px !important" }}
+                              paddingBottom={{ md: "0px !important" }}
+                              width={{ lg: "100%", md: "100%", xs: "100%" }}
+                              minWidth={"200px"}
+                            >
+                              <Typography className="input_title">
+                                Dest. Region
+                              </Typography>
+                              <FormDataConsumer>
+                                {({ scopedFormData, formData, getSource }) => {
+                                  // console.log(formData);
+                                  return (
+                                    <ReferenceInput
+                                      source="dest_region_id"
+                                      reference="region"
+                                      filter={{ "id@neq": formData.region_id }}
+                                    >
+                                      <AutocompleteInput
+                                        optionText="name"
+                                        optionValue="id"
+                                      />
+                                    </ReferenceInput>
+                                  );
+                                }}
+                              </FormDataConsumer>
+                            </Stack>
+                          )}
                           <Stack
                             spacing={2}
                             padding={{ md: 3, sm: 2, xs: 0 }}
                             paddingX={{ md: "16px !important" }}
                             paddingBottom={{ md: "0px !important" }}
                             width={{ lg: "50%", md: "45%", xs: "100%" }}
-                            minWidth={"200px"}
+                            minWidth={"300px"}
                           >
                             <Typography className="input_title">
                               Dest. State
@@ -1401,10 +2025,10 @@ export default function DeliveriesCreateComp(props) {
                               source="dest_state"
                               defaultValue={record && record.state}
                               choices={
-                                temp_coll2 &&
-                                temp_coll2.current &&
-                                temp_coll2.current.length
-                                  ? temp_coll2.current.map((coll_st_data) => {
+                                temp_coll &&
+                                temp_coll.current &&
+                                temp_coll.current.length
+                                  ? temp_coll.current.map((coll_st_data) => {
                                       return {
                                         id: coll_st_data.state.id,
                                         name: coll_st_data.state.state,
@@ -1420,50 +2044,15 @@ export default function DeliveriesCreateComp(props) {
                             paddingX={{ md: "16px !important" }}
                             paddingBottom={{ md: "0px !important" }}
                             width={{ lg: "50%", md: "45%", xs: "100%" }}
-                            minWidth={"200px"}
+                            minWidth={"300px"}
                           >
                             <Typography className="input_title">
                               Dest. Collection Station
                             </Typography>
-                            <FormDataConsumer>
-                              {({ scopedFormData, formData, getSource }) => {
-                                // console.log(formData);
-                                return (
-                                  <ReferenceInput
-                                    source="dest_collection_station_id"
-                                    reference="collection_stations"
-                                    filter={{
-                                      region_id: formData.region_id,
-                                    }}
-                                  >
-                                    <AutocompleteInput
-                                      optionText="name"
-                                      optionValue="id"
-                                    />
-                                  </ReferenceInput>
-                                );
-                              }}
-                            </FormDataConsumer>
-                          </Stack>
-                        </Fragment>
-                      ),
-                      international: (
-                        <Fragment>
-                          <Stack
-                            spacing={2}
-                            padding={{ md: 3, sm: 2, xs: 0 }}
-                            paddingX={{ md: "16px !important" }}
-                            paddingBottom={{ md: "0px !important" }}
-                            width={{ lg: "100%", md: "45%", xs: "100%" }}
-                            minWidth={"200px"}
-                          >
-                            <Typography className="input_title">
-                              Dest. Region
-                            </Typography>
                             <ReferenceInput
-                              source="dest_region_id"
-                              reference="region"
-                              filter={{ "id@neq": formData.region_id }}
+                              source="dest_collection_station_id"
+                              reference="collection_stations"
+                              filter={{ region_id: formData.region_id }}
                             >
                               <AutocompleteInput
                                 optionText="name"
@@ -1471,56 +2060,27 @@ export default function DeliveriesCreateComp(props) {
                               />
                             </ReferenceInput>
                           </Stack>
+
                           <Stack
                             spacing={2}
                             padding={{ md: 3, sm: 2, xs: 0 }}
                             paddingX={{ md: "16px !important" }}
                             paddingBottom={{ md: "0px !important" }}
-                            width={{ lg: "50%", md: "45%", xs: "100%" }}
+                            width={{ lg: "100%", md: "100%", xs: "100%" }}
                             minWidth={"200px"}
                           >
                             <Typography className="input_title">
-                              Dest. State
-                            </Typography>
-                            <AutocompleteInput
-                              optionText="name"
-                              optionValue="id"
-                              source="dest_state"
-                              defaultValue={record && record.state}
-                              choices={
-                                temp_coll2 &&
-                                temp_coll2.current &&
-                                temp_coll2.current.length
-                                  ? temp_coll2.current.map((coll_st_data) => {
-                                      return {
-                                        id: coll_st_data.state.id,
-                                        name: coll_st_data.state.state,
-                                      };
-                                    })
-                                  : []
-                              }
-                            />
-                          </Stack>
-                          <Stack
-                            spacing={2}
-                            padding={{ md: 3, sm: 2, xs: 0 }}
-                            paddingX={{ md: "16px !important" }}
-                            paddingBottom={{ md: "0px !important" }}
-                            width={{ lg: "50%", md: "45%", xs: "100%" }}
-                            minWidth={"200px"}
-                          >
-                            <Typography className="input_title">
-                              Dest. Collection Station
+                              Dest. Address
                             </Typography>
                             <FormDataConsumer>
                               {({ scopedFormData, formData, getSource }) => {
                                 // console.log(formData);
                                 return (
                                   <ReferenceInput
-                                    source="dest_collection_station_id"
+                                    source="dest_pickup_station_address"
                                     reference="collection_stations"
                                     filter={{
-                                      region_id: formData.dest_region_id,
+                                      region_id: formData.region_id,
                                     }}
                                   >
                                     <AutocompleteInput
@@ -1534,97 +2094,8 @@ export default function DeliveriesCreateComp(props) {
                           </Stack>
                         </Fragment>
                       ),
-                    }[formData.type]
+                    }[formData.delivery_mode]
                   }
-                  {/* {formData &&
-                    (formData.type === "inter_state" ||
-                      formData.type === "international") && (
-                      <Fragment>
-                        <Stack
-                          spacing={2}
-                          padding={{ md: 3, sm: 2, xs: 0 }}
-                          paddingX={{ md: "16px !important" }}
-                          paddingBottom={{ md: "0px !important" }}
-                          width={{ lg: "100%", md: "45%", xs: "100%" }}
-                          minWidth={"200px"}
-                        >
-                          <Typography className="input_title">
-                            Dest. Region
-                          </Typography>
-                          <ReferenceInput
-                            source="dest_region_id"
-                            reference="region"
-                            filter={{ "id@eq": formData.region_id }}
-                          >
-                            <AutocompleteInput
-                              optionText="name"
-                              optionValue="id"
-                            />
-                          </ReferenceInput>
-                        </Stack>
-                        <Stack
-                          spacing={2}
-                          padding={{ md: 3, sm: 2, xs: 0 }}
-                          paddingX={{ md: "16px !important" }}
-                          paddingBottom={{ md: "0px !important" }}
-                          width={{ lg: "50%", md: "45%", xs: "100%" }}
-                          minWidth={"200px"}
-                        >
-                          <Typography className="input_title">
-                            Dest. State
-                          </Typography>
-                          <AutocompleteInput
-                            optionText="name"
-                            optionValue="id"
-                            source="dest_state"
-                            defaultValue={record && record.state}
-                            choices={
-                              temp_coll2 &&
-                              temp_coll2.current &&
-                              temp_coll2.current.length
-                                ? temp_coll2.current.map((coll_st_data) => {
-                                    return {
-                                      id: coll_st_data.state.id,
-                                      name: coll_st_data.state.state,
-                                    };
-                                  })
-                                : []
-                            }
-                          />
-                        </Stack>
-                        <Stack
-                          spacing={2}
-                          padding={{ md: 3, sm: 2, xs: 0 }}
-                          paddingX={{ md: "16px !important" }}
-                          paddingBottom={{ md: "0px !important" }}
-                          width={{ lg: "50%", md: "45%", xs: "100%" }}
-                          minWidth={"200px"}
-                        >
-                          <Typography className="input_title">
-                            Dest. Collection Station
-                          </Typography>
-                          <FormDataConsumer>
-                            {({ scopedFormData, formData, getSource }) => {
-                              // console.log(formData);
-                              return (
-                                <ReferenceInput
-                                  source="dest_collection_station_id"
-                                  reference="collection_stations"
-                                  filter={{
-                                    region_id: formData.dest_region_id,
-                                  }}
-                                >
-                                  <AutocompleteInput
-                                    optionText="name"
-                                    optionValue="id"
-                                  />
-                                </ReferenceInput>
-                              );
-                            }}
-                          </FormDataConsumer>
-                        </Stack>
-                      </Fragment>
-                    )} */}
                 </Stack>
               </Stack>
             );
@@ -1643,166 +2114,362 @@ export default function DeliveriesCreateComp(props) {
           flexWrap={"wrap"}
           marginTop={"10px"}
         >
-          <Stack
-            width={"-webkit-fill-available"}
-            maxWidth={{ lg: "60vw", md: "70vw", sm: "80vw", xs: "90vw" }}
-            overflow={"hidden"}
-            direction={"row"}
-            margin={0}
-            // marginLeft={{lg: '15px', md: '20px'}}
-            justifyContent={"start"}
-            flexWrap={"wrap"}
-          >
-            <Stack
-              spacing={2}
-              padding={{ md: 3, sm: 2, xs: 0 }}
-              paddingX={{ md: "16px !important" }}
-              paddingBottom={{ md: "0px !important" }}
-              width={{ lg: "100%", md: "45%", xs: "100%" }}
-              minWidth={"250px"}
-            >
-              <Typography className="input_title">Vehicle</Typography>
-              <FormDataConsumer>
-                {({ scopedFormData, formData, getSource }) => {
-                  // console.log(formData);
-                  return (
-                    <ReferenceInput
-                      source="vehicle"
-                      reference="vehicles"
-                      filter={{ logistics_org_id: formData.logistics_org_id }}
+          <FormDataConsumer>
+            {({ scopedFormData, formData, getSource }) => {
+              return formData.is_institutional_delivery ? (
+                <Fragment>
+                  <Stack
+                    width={"-webkit-fill-available"}
+                    maxWidth={{
+                      lg: "60vw",
+                      md: "70vw",
+                      sm: "80vw",
+                      xs: "90vw",
+                    }}
+                    overflow={"hidden"}
+                    direction={"row"}
+                    margin={0}
+                    // marginLeft={{lg: '15px', md: '20px'}}
+                    justifyContent={"start"}
+                    flexWrap={"wrap"}
+                  >
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "100%", md: "45%", xs: "100%" }}
+                      minWidth={"250px"}
                     >
-                      <AutocompleteInput
-                        optionText={optionText}
-                        inputText={inputText}
-                        // matchSuggestion={matchSuggestion}
-                        optionValue="id"
-                      />
-                    </ReferenceInput>
-                  );
-                }}
-              </FormDataConsumer>
-            </Stack>
-          </Stack>
-          <Stack
-            width={"-webkit-fill-available"}
-            maxWidth={{ lg: "60vw", md: "70vw", sm: "80vw", xs: "90vw" }}
-            overflow={"hidden"}
-            direction={"row"}
-            margin={0}
-            justifyContent={"space-around"}
-            flexWrap={"wrap"}
-          >
-            <Stack
-              spacing={2}
-              padding={{ md: 3, sm: 2, xs: 0 }}
-              paddingX={{ md: "16px !important" }}
-              paddingBottom={{ md: "0px !important" }}
-              width={{ lg: "50%", md: "45%", xs: "100%" }}
-              minWidth={"200px"}
-            >
-              <Typography className="input_title">Driver</Typography>
-              <FormDataConsumer>
-                {({ scopedFormData, formData, getSource }) => {
-                  // console.log(scopedFormData);
-                  return (
-                    <ReferenceInput
-                      source="driver"
-                      reference="staff"
-                      filter={{
-                        role: "driver",
-                        org_id: formData.logistics_org_id,
-                      }}
-                    >
-                      <AutocompleteInput optionText="name" optionValue="id" />
-                    </ReferenceInput>
-                  );
-                }}
-              </FormDataConsumer>
-            </Stack>
-            <Stack
-              spacing={2}
-              padding={{ md: 3, sm: 2, xs: 0 }}
-              paddingX={{ md: "16px !important" }}
-              paddingBottom={{ md: "0px !important" }}
-              width={{ lg: "50%", md: "45%", xs: "100%" }}
-              minWidth={"200px"}
-            >
-              <Typography className="input_title">Supervisor</Typography>
-              <FormDataConsumer>
-                {({ scopedFormData, formData, getSource }) => {
-                  // console.log(scopedFormData);
-                  return (
-                    <ReferenceInput
-                      source="supervisor"
-                      reference="staff"
-                      filter={{
-                        role: "admin",
-                        org_id: formData.logistics_org_id,
-                      }}
-                    >
-                      <AutocompleteInput optionText="name" optionValue="id" />
-                    </ReferenceInput>
-                  );
-                }}
-              </FormDataConsumer>
-            </Stack>
-
-            {/* <Stack
-              width={"-webkit-fill-available"}
-              maxWidth={{ lg: "60vw", md: "70vw", sm: "80vw", xs: "90vw" }}
-              overflow={"hidden"}
-              direction={"row"}
-              margin={0}
-              // marginLeft={{lg: '15px', md: '20px'}}
-              justifyContent={"start"}
-              flexWrap={"wrap"}
-            >
-              <Stack
-                spacing={2}
-                padding={{ md: 3, sm: 2, xs: 0 }}
-                paddingX={{ md: "16px !important" }}
-                paddingBottom={{ md: "0px !important" }}
-                width={{ lg: "100%", md: "45%", xs: "100%" }}
-                minWidth={"250px"}
-              >
-                <Typography className="input_title">Order IDs</Typography>
-                <FormDataConsumer>
-                  {({ scopedFormData, formData, getSource }) => {
-                    // console.log(formData);
-                    return (
-                      <AutocompleteArrayInput
-                        fullWidth
-                        variant="outlined"
-                        source="order_ids"
-                        label="Order IDs"
-                        helperText="Specify orders to be picked up upon processing of this request."
-                        defaultValue={
-                          record && orders && orders.length && record.order_ids
-                        }
-                        choices={
-                          orders && formData && formData.region_id
-                            ? orders
-                                .filter(
-                                  (ord) => ord.region_id === formData.region_id
-                                )
-                                .map((order) => {
-                                  return {
-                                    id: order.id,
-                                    name: order.display_id,
-                                  };
-                                })
-                            : []
-                        }
-                        onChange={(value) => {
-                          // console.log(value);
+                      <Typography className="input_title">Vehicle</Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(formData);
+                          return (
+                            <ReferenceInput
+                              source="vehicle"
+                              reference="vehicles"
+                              filter={{
+                                logistics_org_id: formData.logistics_org_id,
+                              }}
+                            >
+                              <AutocompleteInput
+                                optionText={optionText}
+                                inputText={inputText}
+                                // matchSuggestion={matchSuggestion}
+                                optionValue="id"
+                              />
+                            </ReferenceInput>
+                          );
                         }}
-                      />
-                    );
-                  }}
-                </FormDataConsumer>
-              </Stack>
-            </Stack> */}
-          </Stack>
+                      </FormDataConsumer>
+                    </Stack>
+                  </Stack>
+                  <Stack
+                    width={"-webkit-fill-available"}
+                    maxWidth={{
+                      lg: "60vw",
+                      md: "70vw",
+                      sm: "80vw",
+                      xs: "90vw",
+                    }}
+                    overflow={"hidden"}
+                    direction={"row"}
+                    margin={0}
+                    justifyContent={"space-around"}
+                    flexWrap={"wrap"}
+                  >
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "45%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">Driver</Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(scopedFormData);
+                          return (
+                            <ReferenceInput
+                              source="driver"
+                              reference="staff"
+                              filter={{
+                                role: "driver",
+                                org_id: formData.logistics_org_id,
+                              }}
+                            >
+                              <AutocompleteInput
+                                optionText="name"
+                                optionValue="id"
+                              />
+                            </ReferenceInput>
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </Stack>
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "45%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">
+                        Supervisor
+                      </Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(scopedFormData);
+                          return (
+                            <ReferenceInput
+                              source="supervisor"
+                              reference="staff"
+                              filter={{
+                                role: "admin",
+                                org_id: formData.logistics_org_id,
+                              }}
+                            >
+                              <AutocompleteInput
+                                optionText="name"
+                                optionValue="id"
+                              />
+                            </ReferenceInput>
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </Stack>
+                  </Stack>
+                </Fragment>
+              ) : (
+                <Fragment>
+                  <Stack
+                    width={"-webkit-fill-available"}
+                    maxWidth={{
+                      lg: "60vw",
+                      md: "70vw",
+                      sm: "80vw",
+                      xs: "90vw",
+                    }}
+                    overflow={"hidden"}
+                    direction={"row"}
+                    margin={0}
+                    justifyContent={"space-around"}
+                    flexWrap={"wrap"}
+                  >
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "45%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">
+                        Vehicle Type
+                      </Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(scopedFormData);
+                          return (
+                            <SelectInput
+                              optionText="name"
+                              optionValue="id"
+                              choices={[
+                                { id: "bike", name: "Bike" },
+                                { id: "car", name: "Car" },
+                                { id: "van", name: "Van" },
+                                { id: "truck", name: "Truck" },
+                              ]}
+                              source="vehicle_type"
+                            />
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </Stack>
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "45%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">
+                        Vin/Licence Plate
+                      </Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(scopedFormData);
+                          return (
+                            <TextInput
+                              source="vehicle_vin_or_plate"
+                              label=" VIN or Plate"
+                              helperText="Vehicle VIN or Licence Plate Number"
+                            />
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </Stack>
+                  </Stack>
+                  <Stack
+                    width={"-webkit-fill-available"}
+                    maxWidth={{
+                      lg: "60vw",
+                      md: "70vw",
+                      sm: "80vw",
+                      xs: "90vw",
+                    }}
+                    overflow={"hidden"}
+                    direction={"row"}
+                    margin={0}
+                    // marginLeft={{lg: '15px', md: '20px'}}
+                    justifyContent={"start"}
+                    flexWrap={"wrap"}
+                  >
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "100%", md: "45%", xs: "100%" }}
+                      minWidth={"250px"}
+                    >
+                      <Typography className="input_title">
+                        VehicleName, Make/Model and Color{" "}
+                      </Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(formData);
+                          return (
+                            <AutocompleteArrayInput
+                              fullWidth
+                              variant="outlined"
+                              source="vehicle_name_make_model_color"
+                              label="Vehicle Name, Make/Model and Color"
+                              helperText="Specify the vehicle name, make/model and color."
+                              // disabled={
+                              //   formData && formData.vehicle_name_make_model_color && formData.vehicle_name_make_model_color.length
+                              //     ? true
+                              //     : false
+                              // }
+                              defaultValue={
+                                record && record.vehicle_name_make_model_color
+                              }
+                              createItemLabel={`Add a new vehicle : %{item}`}
+                              onCreate={(newOptionName) => {
+                                const parts = newOptionName
+                                  .split(",")
+                                  .map((s) => s.trim());
+                                const [name, make, model, color] = parts;
+                                const newOption = {
+                                  id: newOptionName.toLowerCase(),
+                                  name: `${name} - ${make} - ${model} - ${color}`,
+                                  vehicle_name: name,
+                                  make: make,
+                                  model: model,
+                                  color: color,
+                                };
+                                options.push(newOption);
+                                return newOption;
+                              }}
+                              choices={options
+                                .map((option) => ({
+                                  id: option.id,
+                                  name: `${option.vehicle_name} - ${option.make} - ${option.model} - ${option.color}`,
+                                }))
+                                .concat(
+                                  formData && formData.region_id && record
+                                    ? record.vehicle_name_make_model_color.map(
+                                        (vehicle) => {
+                                          const parts = vehicle
+                                            .split(",")
+                                            .map((s) => s.trim());
+                                          const [name, make, model, color] =
+                                            parts;
+                                          return {
+                                            id: vehicle.toLowerCase(),
+                                            name: `${name} - ${make} - ${model} - ${color}`,
+                                          };
+                                        }
+                                      )
+                                    : []
+                                )}
+                            />
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </Stack>
+                  </Stack>
+                  <Stack
+                    width={"-webkit-fill-available"}
+                    maxWidth={{
+                      lg: "60vw",
+                      md: "70vw",
+                      sm: "80vw",
+                      xs: "90vw",
+                    }}
+                    overflow={"hidden"}
+                    direction={"row"}
+                    margin={0}
+                    justifyContent={"space-around"}
+                    flexWrap={"wrap"}
+                  >
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "45%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">
+                        Driver Name
+                      </Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(scopedFormData);
+                          return (
+                            <TextInput
+                              source="driver_name"
+                              label="Driver Name"
+                              helperText="Name of the driver assigned to this delivery."
+                            />
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </Stack>
+                    <Stack
+                      spacing={2}
+                      padding={{ md: 3, sm: 2, xs: 0 }}
+                      paddingX={{ md: "16px !important" }}
+                      paddingBottom={{ md: "0px !important" }}
+                      width={{ lg: "50%", md: "45%", xs: "100%" }}
+                      minWidth={"200px"}
+                    >
+                      <Typography className="input_title">
+                        Driver Phone
+                      </Typography>
+                      <FormDataConsumer>
+                        {({ scopedFormData, formData, getSource }) => {
+                          // console.log(scopedFormData);
+                          return (
+                            <TextInput
+                              source="driver_phone"
+                              label="Driver Phone"
+                              helperText="Phone number of the driver assigned to this delivery."
+                            />
+                          );
+                        }}
+                      </FormDataConsumer>
+                    </Stack>
+                  </Stack>
+                </Fragment>
+              );
+            }}
+          </FormDataConsumer>
         </Stack>
       ),
     },
@@ -1902,7 +2569,7 @@ export default function DeliveriesCreateComp(props) {
                 },
               }}
             >
-              <OrderList
+              <DestinationList
                 currncy={currncy}
                 setRegionID={setRegionID}
                 setDestRegionID={setDestRegionID}

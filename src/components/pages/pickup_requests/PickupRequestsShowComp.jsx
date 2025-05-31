@@ -602,7 +602,7 @@ const PickupRequestSummary = (props) => {
       name: "Orders",
       comp: (
         <Stack marginTop={1}>
-          <Typography sx={{fontSize: { md: "13px", sm: "13px", xs: "12px" },}}>
+          <Typography sx={{ fontSize: { md: "13px", sm: "13px", xs: "12px" } }}>
             {record && record.order_ids && record.order_ids.length
               ? record.order_ids.length
               : 0}
@@ -792,6 +792,7 @@ export default function PickupRequestsShowComp(props) {
 
   useEffect(() => {
     if (record) {
+      
       medusa.customers.retrieve(record.id).then(({ customer }) => {
         // console.log(customer);
         setUser(customer);
@@ -1300,8 +1301,8 @@ function PickupOrderShowList(isSmall, record, theme, currncy) {
             error={false}
             pagination={false}
             filter={
-              record && record.id
-                ? { "id@in": `(${record.order_ids.join(",")})` }
+              record && record.id && record.order_ids && record.order_ids.length
+                ? { "id@in": `(${record.order_ids.map(id => id).join(",")})` }
                 : null
             }
             // aside={<Aside quickLinks={quickLinks} />}
