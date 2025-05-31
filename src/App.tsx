@@ -146,7 +146,7 @@ export const App = () => {
         />
         <Resource
           name="user"
-          list={UserList}
+          // list={UserList}
           // create={PostCreate}
           // edit={AccountUpdateWizardForm}
           show={UserShow}
