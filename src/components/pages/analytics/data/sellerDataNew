@@ -1,0 +1,156 @@
+// src/data/sellerDataNew.js
+
+// 1. Sales Over Time
+export const getSalesOverTimeData = (orders) => {
+  console.log("Calculating sales data...");
+  const currentDate = new Date();
+
+  // Generate last 12 months buckets.
+  const months = [];
+  const monthMap = {};
+
+  for (let i = 11; i >= 0; i--) {
+    let d;
+    if (i === 0) {
+      d = currentDate;
+    } else {
+      d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    }
+    const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+    const dateStr = d.toISOString().split("T")[0];
+    const bucket = { date: dateStr, sales: 0 };
+    months.push(bucket);
+    monthMap[key] = bucket;
+  }
+
+  // Sum sales for orders in the corresponding month buckets.
+  orders.forEach(order => {
+    if (!order.created_at) return;
+    const orderDate = new Date(order.created_at);
+    const key = `${orderDate.getFullYear()}-${(orderDate.getMonth() + 1).toString().padStart(2, "0")}`;
+    if (monthMap[key]) {
+      const orderTotal = parseFloat(order.total);
+      monthMap[key].sales += isNaN(orderTotal) ? 0 : orderTotal;
+    }
+  });
+
+  return months
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .map(month => ({
+      date: month.date,
+      sales: month.sales,
+    }));
+};
+
+// 2. Product Performance
+export const getProductPerformanceData = (orders) => {
+  const performanceMap = {};
+  orders.forEach(order => {
+    order.items.forEach(item => {
+      // Use product ID as key; assume order item contains "product_id", "title", "unit_price" and "quantity"
+      if (!performanceMap[item.product_id]) {
+        performanceMap[item.product_id] = { product: item.title, sales: 0, returns: 0 };
+      }
+      performanceMap[item.product_id].sales += item.unit_price * item.quantity;
+      // If your system records returns, add logic here to update performanceMap[item.product_id].returns
+    });
+  });
+  return Object.values(performanceMap);
+};
+
+// 3. Category Sales
+export const getCategorySalesData = (products, orders) => {
+  // Build a lookup for product id => category
+  const productCategory = {};
+  products.forEach(product => {
+    // Assume product.category exists; otherwise, supply a default category.
+    productCategory[product.id] = product.category || "Uncategorized";
+  });
+
+  const categoryMap = {};
+  orders.forEach(order => {
+    order.items.forEach(item => {
+      const category = productCategory[item.product_id] || "Uncategorized";
+      if (!categoryMap[category]) {
+        categoryMap[category] = 0;
+      }
+      categoryMap[category] += item.unit_price * item.quantity;
+    });
+  });
+  return Object.keys(categoryMap).map(cat => ({
+    category: cat,
+    value: categoryMap[cat],
+  }));
+};
+
+// 4. Customer Ratings
+export const getCustomerRatingsData = (reviews) => {
+  // If reviews are provided, compute ratings; otherwise, return fallback data.
+  if (reviews && reviews.length) {
+    const aspects = { Quality: 0, Value: 0, Shipping: 0, "Customer Service": 0, Overall: 0 };
+    const counts = { Quality: 0, Value: 0, Shipping: 0, "Customer Service": 0, Overall: 0 };
+
+    reviews.forEach(review => {
+      aspects.Quality += review.quality;
+      aspects.Value += review.value;
+      aspects.Shipping += review.shipping;
+      aspects["Customer Service"] += review.customer_service;
+      aspects.Overall += review.overall;
+      counts.Quality++;
+      counts.Value++;
+      counts.Shipping++;
+      counts["Customer Service"]++;
+      counts.Overall++;
+    });
+    return Object.keys(aspects).map(aspect => ({
+      aspect,
+      rating: counts[aspect] ? aspects[aspect] / counts[aspect] : 0,
+    }));
+  } else {
+    return [
+      { aspect: "Quality", rating: 4.5 },
+      { aspect: "Value", rating: 4.0 },
+      { aspect: "Shipping", rating: 3.5 },
+      { aspect: "Customer Service", rating: 4.2 },
+      { aspect: "Overall", rating: 4.3 },
+    ];
+  }
+};
+
+// 5. Sales Heatmap Data
+export const getSalesHeatmapData = (orders) => {
+  const heatmap = {};
+
+  orders.forEach(order => {
+    const date = new Date(order.created_at).toISOString().split("T")[0];
+    heatmap[date] = (heatmap[date] || 0) + 1;
+  });
+
+  // Build a result for each day of 2022 (adjust for leap years if needed)
+  const result = [];
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(2022, 0, i + 1);
+    const dateStr = d.toISOString().split("T")[0];
+    result.push({ date: dateStr, count: heatmap[dateStr] || 0 });
+  }
+  return result;
+};
+
+// 6. Inventory Scatter Data
+export const getInventoryScatterData = (products, orders) => {
+  // Aggregate sales by product id from orders.
+  const salesMap = {};
+  orders.forEach(order => {
+    order.items.forEach(item => {
+      salesMap[item.product_id] = (salesMap[item.product_id] || 0) + item.unit_price * item.quantity;
+    });
+  });
+
+  // Map each product to its stock and cumulative sales.
+  return products.map(product => ({
+    stock: product.inventory_quantity || 0,
+    sales: salesMap[product.id] || 0,
+    // If you have return info, update below accordingly.
+    returns: 0,
+  }));
+};

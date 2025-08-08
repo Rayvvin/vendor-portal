@@ -33,25 +33,106 @@ import {
   CartesianGrid,
 } from "recharts";
 import CalendarHeatmap from "react-calendar-heatmap";
-import './css/calenderHeatmap.css'; // Import the CSS file
+import "./css/calenderHeatmap.css"; // Import the CSS file
 // import ReactTooltip from "react-tooltip";
 
-
 // Import dummy data
-import {
-  salesOverTimeData,
-  productPerformanceData,
-  categorySalesData,
-  customerRatingsData,
-  salesHeatmapData,
-  inventoryScatterData,
-} from "./data/sellerData";
+// import {
+//   salesOverTimeData,
+//   productPerformanceData,
+//   categorySalesData,
+//   customerRatingsData,
+//   salesHeatmapData,
+//   inventoryScatterData,
+// } from "./data/sellerData";
 import { useTheme } from "react-admin";
-
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+import { useGetIdentity } from "react-admin";
+import Medusa from "@medusajs/medusa-js";
+import { useStore } from "react-admin";
+import { useEffect, useState } from "react";
+import {
+  // Import new data functions from the updated data file
+  getSalesOverTimeData,
+  getProductPerformanceData,
+  getCategorySalesData,
+  getCustomerRatingsData,
+  getSalesHeatmapData,
+  getInventoryScatterData,
+} from "./data/sellerDataNew";
 
 const SellerAnalytics = () => {
-  const [theme, setTheme] = useTheme();
+  // useTheme now returns the theme object directly
+  const theme = useTheme();
+  const { identity, data, isLoading } = useGetIdentity();
+  const [medusa, setMedusa] = useState(null);
+  const [orderList, setOrderList] = useState(null);
+  const [productList, setProductList] = useState(null);
+
+  // Initialize Medusa client once the API token is available
+  useEffect(() => {
+    if (data?.medusa_user?.api_token) {
+      const medusaInstance = new Medusa({
+        maxRetries: 3,
+        baseUrl: import.meta.env.VITE_MEDUSA_URL,
+        apiKey: data.medusa_user.api_token,
+      });
+      setMedusa(medusaInstance);
+    }
+  }, [data]);
+
+  // Define state variables for each data set
+  const [salesOverTimeData, setSalesOverTimeData] = useState([]);
+  const [productPerformanceData, setProductPerformanceData] = useState([]);
+  const [categorySalesData, setCategorySalesData] = useState([]);
+  const [customerRatingsData, setCustomerRatingsData] = useState([]);
+  const [salesHeatmapData, setSalesHeatmapData] = useState([]);
+  const [inventoryScatterData, setInventoryScatterData] = useState([]);
+
+  useEffect(() => {
+    if (medusa) {
+      const fetchOrdersAndProducts = async () => {
+        try {
+          const ordersResponse = await medusa.admin.orders.list();
+          const productsResponse = await medusa.admin.products.list();
+          // Process fetched orders and products as needed
+          setOrderList(ordersResponse.orders);
+          setProductList(productsResponse.products);
+        } catch (error) {
+          console.error("Error fetching orders and products:", error);
+        }
+      };
+      fetchOrdersAndProducts();
+    }
+  }, [medusa]);
+
+  // Fetch data from Medusa once it is initialized
+  useEffect(() => {
+    if (medusa && orderList && productList) {
+      // Fetch data using the new functions
+
+      const fetchData = async () => {
+        const salesData = await getSalesOverTimeData(orderList);
+        const productData = await getProductPerformanceData(orderList);
+        const categoryData = await getCategorySalesData(productList, orderList);
+        // const ratingsData = await getCustomerRatingsData(medusa);
+        const heatmapData = await getSalesHeatmapData(orderList);
+        const scatterData = await getInventoryScatterData(productList, orderList);
+
+        setSalesOverTimeData(salesData);
+        setProductPerformanceData(productData);
+        setCategorySalesData(categoryData);
+        // setCustomerRatingsData(ratingsData);
+        setSalesHeatmapData(heatmapData);
+        setInventoryScatterData(scatterData);
+      };
+      fetchData();
+    }
+  }, [productList, orderList, medusa]);
+
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+  // Get the mode from theme palette if available
+  const isDarkMode = theme && theme.palette && theme.palette.mode === "dark";
+
   return (
     <Grid container spacing={2}>
       {/* Sales Over Time */}
@@ -64,9 +145,8 @@ const SellerAnalytics = () => {
               fontWeight: "500",
             },
             "& p, tspan, span": { fontFamily: "Rubik" },
-            backgroundColor:
-              theme && theme === "dark" ? "#222 !important" : "#fff !important",
-            color: theme && theme === "dark" ? "#fff" : "inherit",
+            backgroundColor: isDarkMode ? "#222 !important" : "#fff !important",
+            color: isDarkMode ? "#fff" : "inherit",
           }}
         >
           <CardHeader title="Sales Over Time" />
@@ -94,9 +174,8 @@ const SellerAnalytics = () => {
               fontWeight: "500",
             },
             "& p, tspan, span": { fontFamily: "Rubik" },
-            backgroundColor:
-              theme && theme === "dark" ? "#222 !important" : "#fff !important",
-            color: theme && theme === "dark" ? "#fff" : "inherit",
+            backgroundColor: isDarkMode ? "#222 !important" : "#fff !important",
+            color: isDarkMode ? "#fff" : "inherit",
           }}
         >
           <CardHeader title="Sales by Category" />
@@ -138,9 +217,8 @@ const SellerAnalytics = () => {
               fontWeight: "500",
             },
             "& p, tspan, span": { fontFamily: "Rubik" },
-            backgroundColor:
-              theme && theme === "dark" ? "#222 !important" : "#fff !important",
-            color: theme && theme === "dark" ? "#fff" : "inherit",
+            backgroundColor: isDarkMode ? "#222 !important" : "#fff !important",
+            color: isDarkMode ? "#fff" : "inherit",
           }}
         >
           <CardHeader title="Customer Ratings" />
@@ -163,6 +241,7 @@ const SellerAnalytics = () => {
           </CardContent>
         </Card>
       </Grid>
+
       {/* Product Performance */}
       <Grid item xs={12} md={8}>
         <Card
@@ -173,9 +252,8 @@ const SellerAnalytics = () => {
               fontWeight: "500",
             },
             "& p, tspan, span": { fontFamily: "Rubik" },
-            backgroundColor:
-              theme && theme === "dark" ? "#222 !important" : "#fff !important",
-            color: theme && theme === "dark" ? "#fff" : "inherit",
+            backgroundColor: isDarkMode ? "#222 !important" : "#fff !important",
+            color: isDarkMode ? "#fff" : "inherit",
           }}
         >
           <CardHeader title="Product Performance" />
@@ -205,9 +283,8 @@ const SellerAnalytics = () => {
               fontWeight: "500",
             },
             "& p, tspan, span": { fontFamily: "Rubik" },
-            backgroundColor:
-              theme && theme === "dark" ? "#222 !important" : "#fff !important",
-            color: theme && theme === "dark" ? "#fff" : "inherit",
+            backgroundColor: isDarkMode ? "#222 !important" : "#fff !important",
+            color: isDarkMode ? "#fff" : "inherit",
           }}
         >
           <CardHeader title="Sales Heatmap" />
@@ -307,9 +384,8 @@ const SellerAnalytics = () => {
               fontWeight: "500",
             },
             "& p, tspan, span": { fontFamily: "Rubik" },
-            backgroundColor:
-              theme && theme === "dark" ? "#222 !important" : "#fff !important",
-            color: theme && theme === "dark" ? "#fff" : "inherit",
+            backgroundColor: isDarkMode ? "#222 !important" : "#fff !important",
+            color: isDarkMode ? "#fff" : "inherit",
           }}
         >
           <CardHeader title="Inventory Scatter Plot" />

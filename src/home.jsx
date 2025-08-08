@@ -291,8 +291,8 @@ function Home() {
     },
     {
       title: "Monthly Revenue",
-      value: "£500",
-      percentage: "-5%",
+      value: "£0.00",
+      percentage: "-0%",
       icon: (
         <TrendingDown sx={{ color: "var(--imperial-red)" }} fontSize="small" />
       ),
@@ -307,8 +307,8 @@ function Home() {
     },
     {
       title: "Monthly Views",
-      value: "522",
-      percentage: "+15%",
+      value: "0",
+      percentage: "+0%",
       icon: <Visibility sx={{ color: "var(--emerald)" }} fontSize="small" />,
       color: "var(--emerald)",
     },

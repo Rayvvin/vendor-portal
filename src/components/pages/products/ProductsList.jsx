@@ -55,6 +55,12 @@ import {
   Storefront,
   RestorePage,
 } from "@mui/icons-material";
+import { createClient } from "@supabase/supabase-js";
+const supabase = createClient(
+  import.meta.env.VITE_BASE_URL,
+  import.meta.env.VITE_ANON_KEY
+);
+
 
 const StatCard = (props) => {
   const { title, value, percentage, icon, color } = props;
@@ -163,13 +169,65 @@ const ListActions = () => {
   const refresh = useRefresh();
   const resource = useResourceContext();
   const [theme, setTheme] = useTheme();
+  const identity = useGetIdentity();
+  const [products, setProducts] = useState(null);
+  // const [orders, setOrders] = useState(null);
+
+
+  useEffect(() => {
+    async function fetchOrders() {
+      if (identity?.identity?.medusa_store) {
+        try {
+          let { data: order, error } = await supabase
+            .from("order")
+            .select("*")
+            .eq("store_id", identity?.data?.medusa_store.id);
+          // .maybeSingle();
+
+          setOrders(order);
+        } catch (error) {
+          console.log(error.message);
+        }
+      }
+    }
+    async function fetchProducts() {
+      if (identity?.identity?.medusa_store) {
+        try {
+          let { data: product, error } = await supabase
+            .from("product")
+            .select("*")
+            .eq("store_id", identity?.data?.medusa_store.id);
+          // .maybeSingle();
+
+          // console.log(product);
+          setProducts(product);
+        } catch (error) {
+          console.log(error.message);
+        }
+      }
+    }
+    fetchOrders();
+    fetchProducts();
+  }, [identity]);
+  //  const { data:prod_data, total, isPending, error } = useGetList(
+  //       'product',
+  //       { 
+  //           pagination: { page: 1, perPage: 100 },
+  //           filter: 
+  //       identity && identity.data && identity.data?.medusa_store
+  //         ? { store_id: identity?.data?.medusa_store?.id }
+  //         : null
+      
+  //       }
+  //   );
+  
 
   const stats = [
     {
       title: "All Products",
       // value: `${orders && orders.length > 0 ? orders?.length : 0}`,
-      value: listContext.data && listContext.data.length,
-      percentage: "+36%",
+      value: `${products && products.length > 0 ? products?.length : 0}`,
+      percentage: "+0%",
       icon: <TrendingUp sx={{ color: "var(--emerald)" }} fontSize="small" />,
       color: "var(--emerald)",
     },
@@ -177,18 +235,16 @@ const ListActions = () => {
       title: "Active Products",
       // value: `${orders && orders.length > 0 ? orders?.length : 0}`,
       value:
-        listContext.data &&
-        listContext.data.filter((dt) => dt.status === "published").length,
-      percentage: "+36%",
+        products && products.length > 0 && products?.filter((dt) => dt.status === "published").length,
+      percentage: "+0%",
       icon: <TrendingUp sx={{ color: "var(--emerald)" }} fontSize="small" />,
       color: "var(--emerald)",
     },
     {
       title: "Archived Products",
       value:
-        listContext.data &&
-        listContext.data.filter((dt) => dt.status === "archived")?.length,
-      percentage: "-14%",
+        products && products.length > 0 && products?.filter((dt) => dt.status === "archived")?.length,
+      percentage: "-0%",
       icon: (
         <TrendingDown sx={{ color: "var(--imperial-red)" }} fontSize="small" />
       ),
@@ -197,9 +253,8 @@ const ListActions = () => {
     {
       title: "Drafted Products",
       value:
-        listContext.data &&
-        listContext.data.filter((dt) => dt.status === "draft").length,
-      percentage: "-14%",
+        products && products.length > 0 && products?.filter((dt) => dt.status === "draft").length,
+      percentage: "-0%",
       icon: (
         <TrendingDown sx={{ color: "var(--imperial-red)" }} fontSize="small" />
       ),
